@@ -1,0 +1,36 @@
+# === .NET / ASP.NET Core ===
+[Bb]in/
+[Oo]bj/
+out/
+publish/
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+# Database files
+*.db
+*.db-shm
+*.db-wal
+aspnetcore-browser-refresh.js
+
+# === Node.js / Nuxt 4 ===
+node_modules/
+dist/
+.output/
+.nuxt/
+.nitro/
+.cache/
+.pnpm-debug.log*
+.env
+.env.*
+!.env.example
+
+# === Tools ===
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
