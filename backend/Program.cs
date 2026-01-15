@@ -1,4 +1,6 @@
 
+using Microsoft.AspNetCore.Identity;
+
 namespace backend
 {
     public class Program
@@ -25,6 +27,10 @@ namespace backend
 
             app.UseAuthorization();
 
+            app.MapGet("/", async (context) =>
+            {
+                await context.Response.WriteAsync("Hello World!");
+            });
 
             app.MapControllers();
 
