@@ -1,22 +1,59 @@
 ﻿using backend.Models;
+using backend.Services;
+using backend.Tables;
+using BCrypt.Net;
 using Microsoft.AspNetCore.Mvc;
+using SqlSugar;
+using System.Text;
 
-namespace backend.Controllers
+namespace backend.Controllers;
+
+public class AuthController : BaseApiController
 {
-    public class AuthController : BaseApiController
+    private readonly ISqlSugarClient _db;
+    private readonly JwtService _jwt;
+
+    public AuthController(ISqlSugarClient db, JwtService jwt)
     {
-        [HttpPost("login")]
-        public IActionResult Login([FromBody] AuthLoginModel model)
+        _db = db;
+        _jwt = jwt;
+    }
+
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] AuthLoginModel model)
+    {
+        // query user
+        UserTable? user = await _db.Queryable<UserTable>()
+            .FirstAsync(u => u.Email == model.Email);
+
+        // check for password
+        if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
         {
-            if (model.Email == "test@test.com" && BCrypt.Net.BCrypt.HashPassword(model.Password) == "<I WILL COMPLETE READ HASH CODES LATER>")
-            {
-                // Issue Token Here
-                return Ok(new
-                {
-                    Token
-                });
-            }
-            return Unauthorized();
+            return BadRequest(new { message = "Invalid email or password." });
         }
+
+        // banned
+        if (user.IsBanned)
+        {
+            return StatusCode(403, new { message = "Your account has been banned." });
+        }
+
+        // issue token
+        string token = await _jwt.IssueJwtToken(user);
+
+        // write cookie
+        Response.Cookies.Append("auth_token", token, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Lax,
+            Expires = DateTimeOffset.UtcNow.AddHours(2)
+        });
+
+        return Ok(new
+        {
+            message = "Login successful.",
+            user = new { user.Username, user.Role }
+        });
     }
 }

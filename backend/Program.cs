@@ -1,7 +1,9 @@
 
+using backend.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
+using SqlSugar;
 using System.Text;
 using System.Text.Json;
 
@@ -22,6 +24,25 @@ namespace backend
                 });
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
+
+            builder.Services.AddScoped<ISqlSugarClient>(s =>
+            {
+                SqlSugarClient db = new SqlSugarClient(new ConnectionConfig()
+                {
+                    ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection"),
+                    DbType = DbType.PostgreSQL,
+                    IsAutoCloseConnection = true,
+                    InitKeyType = InitKeyType.Attribute
+                });
+                db.CodeFirst.InitTables(
+                    typeof(Tables.UserTable),
+                    typeof(Tables.InviteTable),
+                    typeof(Tables.SettingTable)
+                );
+                return db;
+            });
+
+            builder.Services.AddScoped<JwtService>();
 
             var jwtSettings = builder.Configuration.GetSection("JwtSettings"); // 从配置文件读取 JWT 配置
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
