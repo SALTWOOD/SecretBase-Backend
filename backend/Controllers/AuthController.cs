@@ -40,6 +40,7 @@ public class AuthController : BaseApiController
 
         // issue token
         string token = await _jwt.IssueJwtToken(user);
+        int expireHours = _db.Queryable<SettingTable>().First(s => s.Key == "site.security.jwt.expire_hours").GetValue<int>();
 
         // write cookie
         Response.Cookies.Append("auth_token", token, new CookieOptions
@@ -47,7 +48,7 @@ public class AuthController : BaseApiController
             HttpOnly = true,
             Secure = true,
             SameSite = SameSiteMode.Lax,
-            Expires = DateTimeOffset.UtcNow.AddHours(2)
+            Expires = DateTimeOffset.UtcNow.AddHours(expireHours)
         });
 
         return Ok(new

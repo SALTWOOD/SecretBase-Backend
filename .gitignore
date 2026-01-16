@@ -34,3 +34,5 @@ Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj
+
+appsettings.*.json

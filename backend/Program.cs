@@ -39,12 +39,13 @@ namespace backend
                     typeof(Tables.InviteTable),
                     typeof(Tables.SettingTable)
                 );
+                DatabaseInitializer.InitializeAsync(db).Wait();
                 return db;
             });
 
             builder.Services.AddScoped<JwtService>();
 
-            var jwtSettings = builder.Configuration.GetSection("JwtSettings"); // 从配置文件读取 JWT 配置
+            var jwtSettings = builder.Configuration.GetSection("JwtSettings");
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
@@ -61,7 +62,7 @@ namespace backend
 
                         ValidateIssuerSigningKey = true,
                         IssuerSigningKey = new SymmetricSecurityKey(
-                            Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!)
+                            Encoding.UTF8.GetBytes(jwtSettings["Secret"]!)
                         ),
 
                         ClockSkew = TimeSpan.FromMinutes(5)
@@ -80,11 +81,6 @@ namespace backend
             app.UseHttpsRedirection();
 
             app.UseAuthorization();
-
-            app.MapGet("/", async (context) =>
-            {
-                await context.Response.WriteAsync("Hello World!");
-            });
 
             app.MapControllers();
 

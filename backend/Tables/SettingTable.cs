@@ -15,14 +15,12 @@ public enum SettingType
 public class SettingTable
 {
     [SugarColumn(IsPrimaryKey = true)]
-    public required string Key { get; set; }
+    public string Key { get; set; } = string.Empty;
 
-    [SugarColumn(ColumnDataType = "varchar(max)")]
+    [SugarColumn(ColumnDataType = "text")]
     public string? Value { get; set; }
 
     public SettingType Type { get; set; } = SettingType.String;
-
-    public string? Description { get; set; }
 
     public T? GetValue<T>()
     {
@@ -64,6 +62,28 @@ public class SettingTable
         {
             Value = JsonConvert.SerializeObject(val);
             Type = SettingType.Json;
+        }
+    }
+}
+
+public static class SettingKeys
+{
+    public static class Site
+    {
+        public const string Prefix = "site.";
+
+        public static class Security
+        {
+            public const string Prefix = Site.Prefix + "security.";
+            
+            public static class Jwt
+            {
+                public const string Prefix = Security.Prefix + "jwt.";
+                public const string Secret = Prefix + "secret";
+                public const string Issuer = Prefix + "issuer";
+                public const string Audience = Prefix + "audience";
+                public const string ExpireHours = Prefix + "expire_hours";
+            }
         }
     }
 }

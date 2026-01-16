@@ -19,13 +19,13 @@ public class JwtService
     public async Task<string> IssueJwtToken(UserTable user)
     {
         var settings = await _db.Queryable<SettingTable>()
-            .Where(s => s.Key.StartsWith("site.security.jwt."))
+            .Where(s => s.Key.StartsWith(SettingKeys.Site.Security.Jwt.Prefix))
             .ToListAsync();
 
-        var secret = settings.First(s => s.Key == "site.security.jwt.secret").GetValue<string>().ThrowIfNull();
-        var issuer = settings.First(s => s.Key == "site.security.jwt.issuer").GetValue<string>().ThrowIfNull();
-        var audience = settings.First(s => s.Key == "site.security.jwt.audience").GetValue<string>().ThrowIfNull();
-        var expireHours = settings.First(s => s.Key == "site.security.jwt.expire_hours").GetValue<int>();
+        var secret = settings.First(s => s.Key == SettingKeys.Site.Security.Jwt.Secret).GetValue<string>().ThrowIfNull();
+        var issuer = settings.First(s => s.Key == SettingKeys.Site.Security.Jwt.Issuer).GetValue<string>().ThrowIfNull();
+        var audience = settings.First(s => s.Key == SettingKeys.Site.Security.Jwt.Audience).GetValue<string>().ThrowIfNull();
+        var expireHours = settings.First(s => s.Key == SettingKeys.Site.Security.Jwt.ExpireHours).GetValue<int>();
 
         var handler = new JsonWebTokenHandler();
         var key = Encoding.UTF8.GetBytes(secret);

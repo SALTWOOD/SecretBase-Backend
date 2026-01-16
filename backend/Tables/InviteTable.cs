@@ -10,7 +10,7 @@ public class InviteTable
     public int Id { get; set; }
 
     [SugarColumn(IndexGroupNameList = new string[] { "idx_code" })]
-    public required string Code { get; set; }
+    public string Code { get; set; } = string.Empty;
 
     public int IssuedBy { get; set; }
 

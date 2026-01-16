@@ -9,12 +9,12 @@ namespace backend.Tables
         [SugarColumn(IsPrimaryKey = true, IsIdentity = true)]
         public int Id { get; set; }
 
-        public required string Username { get; set; }
+        public string Username { get; set; } = string.Empty;
 
-        public required string Email { get; set; }
+        public string Email { get; set; } = string.Empty;
 
         [JsonIgnore]
-        public required string PasswordHash { get; set; }
+        public string PasswordHash { get; set; } = string.Empty;
 
         public UserRole Role { get; set; } = UserRole.User;
 
@@ -22,14 +22,15 @@ namespace backend.Tables
 
         public DateTime RegisterTime { get; set; } = DateTime.Now;
 
-        [SugarColumn(ColumnDataType = "varchar(max)", IsNullable = true)]
+        [SugarColumn(IsNullable = true)]
         public string? Avatar { get; set; }
 
         [JsonIgnore]
-        [SugarColumn(IsJson = true)]
+        [SugarColumn(IsJson = true, IsNullable = true)]
         public LastLogin? LastLoginInfo { get; set; }
 
         [JsonIgnore]
+        [SugarColumn(IsNullable = true)]
         public string? UsedInviteCode { get; set; }
 
         [Navigate(NavigateType.OneToMany, nameof(InviteTable.IssuedBy))]
