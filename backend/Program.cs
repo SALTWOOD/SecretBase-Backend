@@ -1,89 +1,138 @@
-
-using backend.Services;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.IdentityModel.Tokens;
-using SqlSugar;
 using System.Text;
 using System.Text.Json;
+using System.Threading.RateLimiting;
+using backend.Filters;
+using backend.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.IdentityModel.Tokens;
+using SqlSugar;
 
-namespace backend
+namespace backend;
+
+public class Program
 {
-    public class Program
+    public static async Task Main(string[] args)
     {
-        public static void Main(string[] args)
+        var builder = WebApplication.CreateBuilder(args);
+
+        #region Core Services Configuration
+        builder.Services.AddControllers(options =>
         {
-            var builder = WebApplication.CreateBuilder(args);
+            options.Filters.Add<CaptchaFilter>();
+        })
+        .AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
+        });
 
-            // Add services to the container.
-            builder.Services.AddControllers(options =>
+        builder.Services.AddOpenApi();
+        builder.Services.AddHttpClient();
+        builder.Services.AddMemoryCache();
+        #endregion
+
+        #region Database Configuration (SqlSugar)
+        var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+        builder.Services.AddScoped<ISqlSugarClient>(_ => new SqlSugarClient(new ConnectionConfig
+        {
+            ConnectionString = connectionString,
+            DbType = DbType.PostgreSQL,
+            IsAutoCloseConnection = true,
+            InitKeyType = InitKeyType.Attribute
+        }));
+        #endregion
+
+        #region Custom Business Services
+        builder.Services.AddScoped<ICapValidateService, CapValidateService>();
+        builder.Services.AddScoped<JwtService>();
+        #endregion
+
+        #region Authentication & Authorization
+        var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+        builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
             {
-                options.Filters.Add<Filters.CaptchaFilter>();
-            })
-            .AddJsonOptions(options =>
-            {
-                options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
-            });
-
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-            builder.Services.AddOpenApi();
-
-            SqlSugarClient db = new SqlSugarClient(new ConnectionConfig()
-            {
-                ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection"),
-                DbType = DbType.PostgreSQL,
-                IsAutoCloseConnection = true,
-                InitKeyType = InitKeyType.Attribute
-            });
-            db.CodeFirst.InitTables(
-                typeof(Tables.UserTable),
-                typeof(Tables.InviteTable),
-                typeof(Tables.SettingTable)
-            );
-            DatabaseInitializer.InitializeAsync(db).Wait();
-
-            builder.Services.AddScoped<ISqlSugarClient>(s => db);
-            builder.Services.AddScoped<ICapValidateService, ICapValidateService>();
-            builder.Services.AddScoped<JwtService>();
-
-            var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-            builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
+                options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    // 配置 Token 验证参数
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidIssuer = jwtSettings["Issuer"],
+                    ValidateIssuer = true,
+                    ValidIssuer = jwtSettings["Issuer"],
+                    ValidateAudience = true,
+                    ValidAudience = jwtSettings["Audience"],
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(jwtSettings["Secret"]!)
+                    ),
+                    ClockSkew = TimeSpan.FromMinutes(5)
+                };
+            });
 
-                        ValidateAudience = true,
-                        ValidAudience = jwtSettings["Audience"],
+        builder.Services.AddAuthorization();
+        #endregion
 
-                        ValidateLifetime = true,
-
-                        ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = new SymmetricSecurityKey(
-                            Encoding.UTF8.GetBytes(jwtSettings["Secret"]!)
-                        ),
-
-                        ClockSkew = TimeSpan.FromMinutes(5)
-                    };
-                });
-            builder.Services.AddAuthorization();
-
-            var app = builder.Build();
-
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
+        #region Global Rate Limiting
+        builder.Services.AddRateLimiter(options =>
+        {
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            options.OnRejected = async (context, _) =>
             {
-                app.MapOpenApi();
+                await context.HttpContext.Response.WriteAsJsonAsync(new
+                {
+                    message = "Too many requests. Please try again later."
+                });
+            };
+
+            // Global IP-based rate limit
+            options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+            {
+                var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
+                {
+                    Window = TimeSpan.FromMinutes(1),
+                    PermitLimit = 10,
+                    QueueLimit = 0
+                });
+            });
+        });
+
+        var app = builder.Build();
+        #endregion
+
+        #region Database Initialization
+        using (var scope = app.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ISqlSugarClient>();
+            try
+            {
+                // Sync schemas
+                db.CodeFirst.InitTables(
+                    typeof(Tables.UserTable),
+                    typeof(Tables.InviteTable),
+                    typeof(Tables.SettingTable)
+                );
+                // Seed data
+                await DatabaseInitializer.InitializeAsync(db);
             }
-
-            app.UseAuthorization();
-
-            app.MapControllers();
-
-            app.Run();
+            catch (Exception ex)
+            {
+                var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+                logger.LogError(ex, "An error occurred during database initialization.");
+            }
         }
+        #endregion
+
+        #region HTTP Pipeline
+        if (app.Environment.IsDevelopment())
+        {
+            app.MapOpenApi();
+        }
+
+        app.UseRateLimiter();
+        app.UseAuthentication();
+        app.UseAuthorization();
+        app.MapControllers();
+        #endregion
+
+        await app.RunAsync();
     }
 }
