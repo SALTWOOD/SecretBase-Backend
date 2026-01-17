@@ -1,4 +1,5 @@
-﻿using backend.Models;
+﻿using backend.Filters;
+using backend.Models;
 using backend.Services;
 using backend.Tables;
 using BCrypt.Net;
@@ -12,14 +13,17 @@ public class AuthController : BaseApiController
 {
     private readonly ISqlSugarClient _db;
     private readonly JwtService _jwt;
+    private ICapValidateService _cap;
 
-    public AuthController(ISqlSugarClient db, JwtService jwt)
+    public AuthController(ISqlSugarClient db, JwtService jwt, ICapValidateService cap)
     {
         _db = db;
         _jwt = jwt;
+        _cap = cap;
     }
 
     [HttpPost("login")]
+    [ValidateCaptcha]
     public async Task<IActionResult> Login([FromBody] AuthLoginModel model)
     {
         // query user

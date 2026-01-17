@@ -16,33 +16,34 @@ namespace backend
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
+            builder.Services.AddControllers(options =>
+            {
+                options.Filters.Add<Filters.CaptchaFilter>();
+            })
+            .AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
+            });
 
-            builder.Services.AddControllers()
-                .AddJsonOptions(options =>
-                {
-                    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
-                });
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
 
-            builder.Services.AddScoped<ISqlSugarClient>(s =>
+            SqlSugarClient db = new SqlSugarClient(new ConnectionConfig()
             {
-                SqlSugarClient db = new SqlSugarClient(new ConnectionConfig()
-                {
-                    ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection"),
-                    DbType = DbType.PostgreSQL,
-                    IsAutoCloseConnection = true,
-                    InitKeyType = InitKeyType.Attribute
-                });
-                db.CodeFirst.InitTables(
-                    typeof(Tables.UserTable),
-                    typeof(Tables.InviteTable),
-                    typeof(Tables.SettingTable)
-                );
-                DatabaseInitializer.InitializeAsync(db).Wait();
-                return db;
+                ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection"),
+                DbType = DbType.PostgreSQL,
+                IsAutoCloseConnection = true,
+                InitKeyType = InitKeyType.Attribute
             });
+            db.CodeFirst.InitTables(
+                typeof(Tables.UserTable),
+                typeof(Tables.InviteTable),
+                typeof(Tables.SettingTable)
+            );
+            DatabaseInitializer.InitializeAsync(db).Wait();
 
+            builder.Services.AddScoped<ISqlSugarClient>(s => db);
+            builder.Services.AddScoped<ICapValidateService, ICapValidateService>();
             builder.Services.AddScoped<JwtService>();
 
             var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -77,8 +78,6 @@ namespace backend
             {
                 app.MapOpenApi();
             }
-
-            app.UseHttpsRedirection();
 
             app.UseAuthorization();
 
