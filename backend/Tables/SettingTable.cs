@@ -1,5 +1,5 @@
-﻿using SqlSugar;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
+using SqlSugar;
 
 namespace backend.Tables;
 
@@ -75,7 +75,7 @@ public static class SettingKeys
         public static class Security
         {
             public const string Prefix = Site.Prefix + "security.";
-            
+
             public static class Jwt
             {
                 public const string Prefix = Security.Prefix + "jwt.";

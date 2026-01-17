@@ -1,4 +1,5 @@
-﻿using backend.Services;
+﻿using backend.Models;
+using backend.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
@@ -30,7 +31,6 @@ public class CaptchaFilter : IAsyncActionFilter
             var requestModel = context.ActionArguments.Values
                 .OfType<ICaptchaRequest>()
                 .FirstOrDefault();
-
 
             if (requestModel == null)
             {

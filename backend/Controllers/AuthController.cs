@@ -2,10 +2,8 @@
 using backend.Models;
 using backend.Services;
 using backend.Tables;
-using BCrypt.Net;
 using Microsoft.AspNetCore.Mvc;
 using SqlSugar;
-using System.Text;
 
 namespace backend.Controllers;
 

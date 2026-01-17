@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using backend.Models;
+using System.Text.Json;
 
 namespace backend.Services;
 
@@ -63,9 +64,4 @@ public class CapValidateService : ICapValidateService
 public class CapRemoteResponse
 {
     public bool Success { get; set; }
-}
-
-public interface ICaptchaRequest
-{
-    string CaptchaToken { get; set; }
 }

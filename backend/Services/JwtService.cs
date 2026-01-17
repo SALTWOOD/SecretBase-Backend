@@ -1,9 +1,9 @@
 ﻿using backend.Tables;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
+using SqlSugar;
 using System.Security.Claims;
 using System.Text;
-using SqlSugar;
 
 namespace backend.Services;
 
