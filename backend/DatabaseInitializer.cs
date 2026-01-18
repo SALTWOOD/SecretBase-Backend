@@ -24,7 +24,7 @@ public class DatabaseInitializer
             },
             {
                 SettingKeys.Site.Security.Jwt.ExpireHours,
-                2
+                72
             }
         };
 

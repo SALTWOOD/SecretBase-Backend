@@ -2,6 +2,7 @@
 using backend.Models;
 using backend.Services;
 using backend.Tables;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SqlSugar;
 
@@ -10,17 +11,13 @@ namespace backend.Controllers;
 public class AuthController : BaseApiController
 {
     private readonly ISqlSugarClient _db;
-    private readonly JwtService _jwt;
-    private ICapValidateService _cap;
 
-    public AuthController(ISqlSugarClient db, JwtService jwt, ICapValidateService cap)
+    public AuthController(ISqlSugarClient db)
     {
         _db = db;
-        _jwt = jwt;
-        _cap = cap;
     }
 
-    [HttpPost("login")]
+    [HttpPost]
     [ValidateCaptcha]
     public async Task<IActionResult> Login([FromBody] AuthLoginModel model)
     {
@@ -40,23 +37,38 @@ public class AuthController : BaseApiController
             return StatusCode(403, new { message = "Your account has been banned." });
         }
 
-        // issue token
-        string token = await _jwt.IssueJwtToken(user);
-        int expireHours = _db.Queryable<SettingTable>().First(s => s.Key == "site.security.jwt.expire_hours").GetValue<int>();
-
-        // write cookie
-        Response.Cookies.Append("auth_token", token, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.Lax,
-            Expires = DateTimeOffset.UtcNow.AddHours(expireHours)
-        });
-
+        int expires = _db.Queryable<SettingTable>().First(s => s.Key == SettingKeys.Site.Security.Jwt.ExpireHours).GetValue<int>();
+        await GetService<UserService>().UpdateLastLoginAsync(user, HttpContext);
+        await RefreshTokenAsync(user, expires);
         return Ok(new
         {
             message = "Login successful.",
-            user = new { user.Username, user.Role }
+            user = new { user.Username, user.Role },
+            expires = DateTime.UtcNow.AddHours(expires)
+        });
+    }
+
+    [HttpPost]
+    [Authorize]
+    public async Task<IActionResult> RenewToken()
+    {
+        var user = await _db.Queryable<UserTable>()
+            .Where(u => u.Id == CurrentUserId)
+            .Select(u => new UserTable { Id = u.Id, Username = u.Username, Role = u.Role })
+            .FirstAsync();
+        if (user == null)
+        {
+            return Unauthorized(new { message = "User not found." });
+        }
+
+        int expires = _db.Queryable<SettingTable>().First(s => s.Key == SettingKeys.Site.Security.Jwt.ExpireHours).GetValue<int>();
+        await GetService<UserService>().UpdateLastLoginAsync(user, HttpContext);
+        await RefreshTokenAsync(user, expires);
+        return Ok(new
+        {
+            message = "Token renewed successfully.",
+            user = new { user.Username, user.Role },
+            expires = DateTime.UtcNow.AddHours(expires)
         });
     }
 }

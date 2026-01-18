@@ -15,8 +15,8 @@ public class UserController : BaseApiController
     }
 
     [Authorize]
-    [HttpGet("info")]
-    public async Task<IActionResult> Info()
+    [HttpGet("profile")]
+    public async Task<IActionResult> Profile()
     {
         var user = (await _db.Queryable<UserTable>()
                      .InSingleAsync(CurrentUserId))

@@ -8,7 +8,8 @@ public enum SettingType
     String = 0,
     Number = 1,
     Boolean = 2,
-    Json = 3
+    Json = 3,
+    Null = 4
 }
 
 [SugarTable("settings")]
@@ -26,44 +27,63 @@ public class SettingTable
     {
         if (string.IsNullOrEmpty(Value)) return default;
 
-        if (Type == SettingType.Json)
+        Type targetType = typeof(T);
+        Type underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
+
+        if (Type == SettingType.Json || (!underlyingType.IsPrimitive && underlyingType != typeof(string)))
         {
             return JsonConvert.DeserializeObject<T>(Value);
         }
 
-        try
+        if (underlyingType.IsEnum)
         {
-            return (T)Convert.ChangeType(Value, typeof(T));
+            return (T)Enum.Parse(underlyingType, Value);
         }
-        catch
-        {
-            return default;
-        }
+
+        return (T)Convert.ChangeType(Value, underlyingType, System.Globalization.CultureInfo.InvariantCulture);
     }
+
 
     public void SetValue(object val)
     {
-        if (val is string s)
+        if (val == null)
         {
-            Value = s;
-            Type = SettingType.String;
+            Value = null;
+            Type = SettingType.Null;
+            return;
         }
-        else if (val is bool b)
+
+        switch (val)
         {
-            Value = b.ToString().ToLower();
-            Type = SettingType.Boolean;
-        }
-        else if (val is int || val is long || val is double)
-        {
-            Value = val.ToString();
-            Type = SettingType.Number;
-        }
-        else
-        {
-            Value = JsonConvert.SerializeObject(val);
-            Type = SettingType.Json;
+            case string s:
+                Value = s;
+                Type = SettingType.String;
+                break;
+            case sbyte:
+            case byte:
+            case short:
+            case ushort:
+            case int:
+            case uint:
+            case long:
+            case ulong:
+            case float:
+            case double:
+            case decimal:
+                Value = Convert.ToString(val, System.Globalization.CultureInfo.InvariantCulture);
+                Type = SettingType.Number;
+                break;
+            case bool b:
+                Value = b ? "true" : "false";
+                Type = SettingType.Boolean;
+                break;
+            default:
+                Value = JsonConvert.SerializeObject(val);
+                Type = SettingType.Json;
+                break;
         }
     }
+
 }
 
 public static class SettingKeys
