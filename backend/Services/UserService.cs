@@ -3,7 +3,7 @@ using SqlSugar;
 
 namespace backend.Services;
 
-public class UserService(JwtService jwt, ISqlSugarClient db)
+public class UserService(ISqlSugarClient db)
 {
     public async Task UpdateLastLoginAsync(UserTable user, HttpContext context)
     {

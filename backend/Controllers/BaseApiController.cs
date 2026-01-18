@@ -1,7 +1,6 @@
 ﻿using backend.Services;
 using backend.Tables;
 using Microsoft.AspNetCore.Mvc;
-using SqlSugar;
 
 namespace backend.Controllers
 {

@@ -1,4 +1,4 @@
-﻿namespace backend;
+﻿namespace backend.Filters;
 
 using backend.Services;
 using Microsoft.AspNetCore.Authentication;
