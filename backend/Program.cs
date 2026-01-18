@@ -19,10 +19,6 @@ public class Program
         builder.Services.AddControllers(options =>
         {
             options.Filters.Add<CaptchaFilter>();
-        })
-        .AddJsonOptions(options =>
-        {
-            options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
         });
 
         builder.Services.AddOpenApi();
