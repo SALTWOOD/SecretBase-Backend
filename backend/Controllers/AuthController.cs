@@ -17,7 +17,7 @@ public class AuthController : BaseApiController
         _db = db;
     }
 
-    [HttpPost]
+    [HttpPost("login")]
     [ValidateCaptcha]
     public async Task<IActionResult> Login([FromBody] AuthLoginModel model)
     {
@@ -48,7 +48,7 @@ public class AuthController : BaseApiController
         });
     }
 
-    [HttpPost]
+    [HttpPost("renew")]
     [Authorize]
     public async Task<IActionResult> RenewToken()
     {

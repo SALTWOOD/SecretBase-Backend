@@ -1,5 +1,7 @@
 using backend.Filters;
 using backend.Services;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using SqlSugar;
@@ -40,27 +42,12 @@ public class Program
         #region Custom Business Services
         builder.Services.AddScoped<ICapValidateService, CapValidateService>();
         builder.Services.AddScoped<JwtService>();
+        builder.Services.AddScoped<UserService>();
         #endregion
 
         #region Authentication & Authorization
-        var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-        builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
-            {
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidIssuer = jwtSettings["Issuer"],
-                    ValidateAudience = true,
-                    ValidAudience = jwtSettings["Audience"],
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(
-                        Encoding.UTF8.GetBytes(jwtSettings["Secret"]!)
-                    ),
-                    ClockSkew = TimeSpan.FromMinutes(5)
-                };
-            });
+        builder.Services.AddAuthentication("SimpleCookie")
+            .AddScheme<AuthenticationSchemeOptions, CookieAuthenticator>("SimpleCookie", null);
 
         builder.Services.AddAuthorization();
         #endregion
