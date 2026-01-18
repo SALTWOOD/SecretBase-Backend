@@ -3,7 +3,7 @@
 namespace backend.Controllers
 {
     [ApiController]
-    [Route("/api/v1/[controller]")]
+    [Route("[controller]")]
     public class BaseApiController : ControllerBase
     {
         protected int CurrentUserId =>
