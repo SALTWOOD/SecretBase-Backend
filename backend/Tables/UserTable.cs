@@ -33,6 +33,7 @@ namespace backend.Tables
         [SugarColumn(IsNullable = true)]
         public string? UsedInviteCode { get; set; }
 
+        [JsonIgnore]
         [Navigate(NavigateType.OneToMany, nameof(InviteTable.IssuedBy))]
         public List<InviteTable>? MyIssuedInvites { get; set; }
     }

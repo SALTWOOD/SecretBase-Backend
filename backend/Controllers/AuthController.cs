@@ -2,6 +2,7 @@
 using backend.Models;
 using backend.Services;
 using backend.Tables;
+using backend.Types;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SqlSugar;
@@ -19,6 +20,9 @@ public class AuthController : BaseApiController
 
     [HttpPost("login")]
     [ValidateCaptcha]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Login([FromBody] AuthLoginModel model)
     {
         // query user
@@ -28,13 +32,13 @@ public class AuthController : BaseApiController
         // check for password
         if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
         {
-            return BadRequest(new { message = "Invalid email or password." });
+            return BadRequest(new MessageResponse("Invalid email or password."));
         }
 
         // banned
         if (user.IsBanned)
         {
-            return StatusCode(403, new { message = "Your account has been banned." });
+            return StatusCode(403, new MessageResponse("Your account has been banned."));
         }
 
         int expires = _db.Queryable<SettingTable>().First(s => s.Key == SettingKeys.Site.Security.Jwt.ExpireHours).GetValue<int>();
@@ -50,6 +54,8 @@ public class AuthController : BaseApiController
 
     [HttpPost("renew")]
     [Authorize]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> RenewToken()
     {
         var user = await _db.Queryable<UserTable>()

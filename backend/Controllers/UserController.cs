@@ -1,5 +1,6 @@
 ﻿using backend.Filters;
 using backend.Tables;
+using backend.Types;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SqlSugar;
@@ -17,6 +18,7 @@ public class UserController : BaseApiController
 
     [Authorize]
     [HttpGet("profile")]
+    [ProducesResponseType(typeof(UserTable), StatusCodes.Status200OK)]
     public async Task<IActionResult> Profile()
     {
         var user = (await _db.Queryable<UserTable>()
@@ -28,6 +30,8 @@ public class UserController : BaseApiController
 
     [Authorize]
     [HttpPost("profile")]
+    [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileModel model)
     {
         var user = await _db.Queryable<UserTable>().InSingleAsync(CurrentUserId);
@@ -36,7 +40,7 @@ public class UserController : BaseApiController
         bool hasNew = !string.IsNullOrWhiteSpace(model.NewPassword);
         bool hasOld = !string.IsNullOrWhiteSpace(model.OldPassword);
 
-        if (hasNew != hasOld) return BadRequest(new { message = "Both old and new passwords must be provided to change the password." });
+        if (hasNew != hasOld) return BadRequest(new MessageResponse("Both old and new passwords must be provided to change the password."));
 
         // update username if provided and different
         if (!string.IsNullOrEmpty(model.Username) && model.Username != user.Username)
@@ -48,18 +52,20 @@ public class UserController : BaseApiController
         {
             if (!BCrypt.Net.BCrypt.Verify(model.OldPassword, user.PasswordHash))
             {
-                return BadRequest(new { message = "Entered wrong old password." });
+                return BadRequest(new MessageResponse("Entered wrong old password."));
             }
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
         }
 
         await _db.Updateable(user).ExecuteCommandAsync();
-        return Ok(new { message = "Profile updated." });
+        return Ok(new MessageResponse("Profile updated."));
     }
 
     [HttpPost("avatar")]
     [Authorize]
     [Disabled(true)]
+    [ProducesResponseType(typeof(AvatarResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> UpdateAvatar(IFormFile file)
     {
         if (file == null)
@@ -75,7 +81,7 @@ public class UserController : BaseApiController
         {
             using var image = await SixLabors.ImageSharp.Image.LoadAsync(file.OpenReadStream());
         }
-        catch { return BadRequest("Invalid image file."); }
+        catch { return BadRequest(new MessageResponse("Invalid image file.")); }
 
         var oldAvatar = await _db.Queryable<UserTable>()
             .Where(u => u.Id == CurrentUserId)
@@ -107,7 +113,7 @@ public class UserController : BaseApiController
             }
         }
 
-        return Ok(new { url = avatarUrl });
+        return Ok(new AvatarResponse(avatarUrl));
     }
 }
 
