@@ -47,7 +47,7 @@ public class AuthController : BaseApiController
         return Ok(new
         {
             message = "Login successful.",
-            user = new { user.Username, user.Role },
+            user,
             expires = DateTime.UtcNow.AddHours(expires)
         });
     }
@@ -73,7 +73,7 @@ public class AuthController : BaseApiController
         return Ok(new
         {
             message = "Token renewed successfully.",
-            user = new { user.Username, user.Role },
+            user,
             expires = DateTime.UtcNow.AddHours(expires)
         });
     }
