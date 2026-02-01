@@ -35,7 +35,7 @@ namespace backend.Tables
         public string? UsedInviteCode { get; set; }
 
         [JsonIgnore]
-        [Navigate(NavigateType.OneToMany, nameof(InviteTable.IssuedBy))]
+        [Navigate(NavigateType.OneToMany, nameof(InviteTable.CreatorId))]
         public List<InviteTable>? MyIssuedInvites { get; set; }
     }
 

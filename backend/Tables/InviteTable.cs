@@ -2,6 +2,8 @@
 using SqlSugar;
 using System.Text.Json.Serialization;
 
+namespace backend.Tables;
+
 [SugarTable("invites")]
 [SugarIndex("unique_invites_code", nameof(Code), OrderByType.Desc, true)]
 public class InviteTable
