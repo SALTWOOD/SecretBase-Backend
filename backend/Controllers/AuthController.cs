@@ -11,11 +11,8 @@ namespace backend.Controllers;
 
 public class AuthController : BaseApiController
 {
-    private readonly ISqlSugarClient _db;
-
-    public AuthController(ISqlSugarClient db)
+    public AuthController(ISqlSugarClient db, ILogger<BaseApiController> logger) : base(db, logger)
     {
-        _db = db;
     }
 
     [HttpPost("login")]

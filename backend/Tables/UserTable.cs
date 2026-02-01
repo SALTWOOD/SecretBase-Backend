@@ -20,6 +20,7 @@ namespace backend.Tables
 
         public bool IsBanned { get; set; } = false;
 
+        [SugarColumn(ColumnDataType = "timestamptz")]
         public DateTime RegisterTime { get; set; } = DateTime.Now;
 
         [SugarColumn(IsNullable = true)]

@@ -44,7 +44,10 @@ public class Program
         builder.Services.AddAuthentication("SimpleCookie")
             .AddScheme<AuthenticationSchemeOptions, CookieAuthenticator>("SimpleCookie", null);
 
-        builder.Services.AddAuthorization();
+        builder.Services.AddAuthorization(options =>
+        {
+            options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+        });
         #endregion
 
         #region Global Rate Limiting

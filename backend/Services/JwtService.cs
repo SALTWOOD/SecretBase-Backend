@@ -53,8 +53,8 @@ public class JwtService
         {
             Subject = new ClaimsIdentity(
             [
-                new Claim("id", user.Id.ToString()),
-                new Claim("role", user.Role.ToString())
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Role, user.Role.ToString())
             ]),
             Expires = DateTime.UtcNow.AddHours(_expireHours.Value),
             Issuer = _issuer,

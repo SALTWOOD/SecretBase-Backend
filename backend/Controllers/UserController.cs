@@ -9,11 +9,8 @@ namespace backend.Controllers;
 
 public class UserController : BaseApiController
 {
-    private readonly ISqlSugarClient _db;
-
-    public UserController(ISqlSugarClient db)
+    public UserController(ISqlSugarClient db, ILogger<BaseApiController> logger) : base(db, logger)
     {
-        _db = db;
     }
 
     [Authorize]
