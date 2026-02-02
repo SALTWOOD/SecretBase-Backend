@@ -24,6 +24,7 @@ public class Program
         #endregion
 
         #region Database Configuration (SqlSugar)
+        StaticConfig.AppContext_ConvertInfinityDateTime = true;
         var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
         builder.Services.AddScoped<ISqlSugarClient>(_ => new SqlSugarClient(new ConnectionConfig
         {
@@ -31,6 +32,23 @@ public class Program
             DbType = DbType.PostgreSQL,
             IsAutoCloseConnection = true,
             InitKeyType = InitKeyType.Attribute
+        }, db =>
+        {
+            db.Aop.DataExecuting = (value, entity) =>
+            {
+                if (value is not DateTime dt) return;
+                switch (dt.Kind)
+                {
+                    case DateTimeKind.Unspecified:
+                        entity.SetValue(DateTime.SpecifyKind(dt, DateTimeKind.Utc));
+                        break;
+                    case DateTimeKind.Utc:
+                        break;
+                    default:
+                        entity.SetValue(dt.ToUniversalTime());
+                        break;
+                }
+            };
         }));
         #endregion
 
@@ -69,7 +87,7 @@ public class Program
                 return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
                 {
                     Window = TimeSpan.FromMinutes(1),
-                    PermitLimit = 10,
+                    PermitLimit = 60,
                     QueueLimit = 0
                 });
             });
