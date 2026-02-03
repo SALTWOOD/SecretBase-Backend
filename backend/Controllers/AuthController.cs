@@ -58,6 +58,7 @@ public class AuthController : BaseApiController
     }
 
     [HttpPost("register")]
+    [ValidateCaptcha]
     [ProducesResponseType(typeof(UserTable), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status403Forbidden)]
