@@ -32,13 +32,6 @@ public class AuthController : BaseApiController
             return BadRequest(new MessageResponse("Invalid email or password."));
         }
 
-        // banned
-        if (user.IsBanned)
-        {
-            return StatusCode(403, new MessageResponse("Your account has been banned."));
-        }
-
-        int expires = _db.Queryable<SettingTable>().First(s => s.Key == SettingKeys.Site.Security.Jwt.ExpireHours).GetValue<int>();
         await GetService<UserService>().UpdateLastLoginAsync(user, HttpContext);
         int expires = await RefreshTokenAsync(user);
         return Ok(new
@@ -79,7 +72,6 @@ public class AuthController : BaseApiController
             return Unauthorized(new { message = "User not found." });
         }
 
-        int expires = _db.Queryable<SettingTable>().First(s => s.Key == SettingKeys.Site.Security.Jwt.ExpireHours).GetValue<int>();
         await GetService<UserService>().UpdateLastLoginAsync(user, HttpContext);
         int expires = await RefreshTokenAsync(user);
         return Ok(new
