@@ -49,6 +49,21 @@ public class AuthController : BaseApiController
         });
     }
 
+    [HttpPost("logout")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Logout()
+    {
+        CookieOptions options = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Lax,
+            Path = "/"
+        };
+        HttpContext.Response.Cookies.Delete(Constants.AUTH_TOKEN_COOKIE_NAME, options);
+        return NoContent();
+    }
+
     [HttpPost("renew")]
     [Authorize]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
