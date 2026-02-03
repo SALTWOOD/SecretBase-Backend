@@ -42,6 +42,10 @@ public class UserController : BaseApiController
         // update username if provided and different
         if (!string.IsNullOrEmpty(model.Username) && model.Username != user.Username)
         {
+            bool usernameExists = await _db.Queryable<UserTable>()
+                .AnyAsync(u => u.Username == model.Username);
+            if (usernameExists) return BadRequest(new MessageResponse("Username is already taken."));
+
             user.Username = model.Username;
         }
 

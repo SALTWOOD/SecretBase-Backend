@@ -33,8 +33,7 @@ public class BaseApiController : ControllerBase
         var _jwt = GetService<JwtService>();
 
         var expireHours = await _db.Queryable<SettingTable>()
-            .Where(s => s.Key == SettingKeys.Site.Security.Jwt.ExpireHours)
-            .FirstAsync();
+            .FirstAsync(s => s.Key == SettingKeys.Site.Security.Jwt.ExpireHours);
 
         var hours = expireHours.GetValue<int>();
 

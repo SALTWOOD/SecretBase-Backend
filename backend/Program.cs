@@ -56,6 +56,7 @@ public class Program
         builder.Services.AddScoped<ICapValidateService, CapValidateService>();
         builder.Services.AddScoped<JwtService>();
         builder.Services.AddScoped<UserService>();
+        builder.Services.AddScoped<SettingService>();
         #endregion
 
         #region Authentication & Authorization

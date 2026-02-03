@@ -25,6 +25,14 @@ public class DatabaseInitializer
             {
                 SettingKeys.Site.Security.Jwt.ExpireHours,
                 72
+            },
+            {
+                SettingKeys.Site.User.Registration.Enabled,
+                true
+            },
+            {
+                SettingKeys.Site.User.Registration.ForceInvitation,
+                false
             }
         };
 

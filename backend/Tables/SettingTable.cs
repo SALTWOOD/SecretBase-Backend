@@ -105,5 +105,17 @@ public static class SettingKeys
                 public const string ExpireHours = Prefix + "expire_hours";
             }
         }
+
+        public static class User
+        {
+            public const string Prefix = Site.Prefix + "user.";
+            
+            public static class Registration
+            {
+                public const string Prefix = User.Prefix + "registration.";
+                public const string Enabled = Prefix + "enabled";
+                public const string ForceInvitation = Prefix + "force_invitation";
+            }
+        }
     }
 }

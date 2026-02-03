@@ -1,8 +1,7 @@
-﻿namespace backend.Models
+﻿namespace backend.Models;
+
+public class AuthLoginModel : CaptchaRequestBase
 {
-    public class AuthLoginModel : CaptchaRequestBase
-    {
-        public required string Email { get; set; }
-        public required string Password { get; set; }
-    }
+    public required string Email { get; set; }
+    public required string Password { get; set; }
 }
