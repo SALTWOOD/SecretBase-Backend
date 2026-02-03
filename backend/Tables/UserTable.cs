@@ -23,8 +23,7 @@ namespace backend.Tables
         [SugarColumn(ColumnDataType = "timestamptz")]
         public DateTime RegisterTime { get; set; } = DateTime.Now;
 
-        [SugarColumn(IsNullable = true)]
-        public string? Avatar { get; set; }
+        public string Avatar { get; set; } = string.Empty;
 
         [JsonIgnore]
         [SugarColumn(IsJson = true, IsNullable = true)]
