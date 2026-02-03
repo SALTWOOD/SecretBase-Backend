@@ -66,9 +66,10 @@ public class AdminController : BaseApiController
             CreatorId = CurrentUserId,
         };
 
-        await _db.Insertable(invite).ExecuteCommandAsync();
+        int id = await _db.Insertable(invite).ExecuteReturnIdentityAsync();
+        invite.Id = id;
 
-        return CreatedAtAction(nameof(GetInvitation), invite);
+        return CreatedAtAction(nameof(GetInvitation), new { id }, invite);
     }
 
     [HttpGet("invitations/{id:int}")]
