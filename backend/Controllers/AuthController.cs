@@ -100,6 +100,9 @@ public class AuthController : BaseApiController
             Avatar = Constants.DEFAULT_AVATAR_URL,
         };
         await _db.Insertable(newUser).ExecuteCommandAsync();
+
+        await GetService<UserService>().UpdateLastLoginAsync(newUser, HttpContext);
+        await RefreshTokenAsync(newUser);
         return Ok(newUser);
     }
 
