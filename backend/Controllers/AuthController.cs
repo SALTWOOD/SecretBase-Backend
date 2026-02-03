@@ -9,6 +9,7 @@ using SqlSugar;
 
 namespace backend.Controllers;
 
+[Route("auth")]
 public class AuthController : BaseApiController
 {
     public AuthController(ISqlSugarClient db, ILogger<BaseApiController> logger) : base(db, logger)
@@ -98,6 +99,7 @@ public class AuthController : BaseApiController
             IsBanned = false,
             RegisterTime = DateTime.UtcNow,
             Avatar = Constants.DEFAULT_AVATAR_URL,
+            UsedInviteId = invite?.Id
         };
         await _db.Insertable(newUser).ExecuteCommandAsync();
 

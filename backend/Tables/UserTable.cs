@@ -29,9 +29,11 @@ namespace backend.Tables
         [SugarColumn(IsJson = true, IsNullable = true)]
         public LastLogin? LastLoginInfo { get; set; }
 
-        [JsonIgnore]
         [SugarColumn(IsNullable = true)]
-        public string? UsedInviteCode { get; set; }
+        public int? UsedInviteId { get; set; }
+
+        [Navigate(NavigateType.OneToOne, nameof(UsedInviteId))]
+        public InviteTable? UsedInvite { get; set; }
 
         [JsonIgnore]
         [Navigate(NavigateType.OneToMany, nameof(InviteTable.CreatorId))]

@@ -7,6 +7,7 @@ using SqlSugar;
 
 namespace backend.Controllers;
 
+[Route("user")]
 public class UserController : BaseApiController
 {
     public UserController(ISqlSugarClient db, ILogger<BaseApiController> logger) : base(db, logger)

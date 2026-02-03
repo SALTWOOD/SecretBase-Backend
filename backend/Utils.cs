@@ -19,9 +19,7 @@ public static class Utils
         InviteTable invite = await db.Queryable<InviteTable>()
             .FirstAsync(it =>
                 it.Code == code &&
-                !it.IsDisabled &&
-                it.MaxUses > it.UsedCount &&
-                (it.ExpireAt == null || it.ExpireAt > DateTime.UtcNow)
+                it.IsValid
             );
         if (doIncrement && invite != null)
         {

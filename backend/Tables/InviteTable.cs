@@ -31,6 +31,9 @@ public class InviteTable
     [Navigate(NavigateType.OneToOne, nameof(CreatorId))]
     public UserTable? Creator { get; set; }
 
+    [Navigate(NavigateType.OneToMany, nameof(UserTable.UsedInviteId))]
+    public List<UserTable>? UsedBy { get; set; }
+
     // Logic Property
     [JsonIgnore]
     [SugarColumn(IsIgnore = true)]
