@@ -40,7 +40,7 @@ public class AuthController : BaseApiController
 
         int expires = _db.Queryable<SettingTable>().First(s => s.Key == SettingKeys.Site.Security.Jwt.ExpireHours).GetValue<int>();
         await GetService<UserService>().UpdateLastLoginAsync(user, HttpContext);
-        await RefreshTokenAsync(user, expires);
+        int expires = await RefreshTokenAsync(user);
         return Ok(new
         {
             message = "Login successful.",
@@ -66,7 +66,7 @@ public class AuthController : BaseApiController
 
         int expires = _db.Queryable<SettingTable>().First(s => s.Key == SettingKeys.Site.Security.Jwt.ExpireHours).GetValue<int>();
         await GetService<UserService>().UpdateLastLoginAsync(user, HttpContext);
-        await RefreshTokenAsync(user, expires);
+        int expires = await RefreshTokenAsync(user);
         return Ok(new
         {
             message = "Token renewed successfully.",

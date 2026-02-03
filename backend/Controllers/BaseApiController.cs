@@ -27,10 +27,16 @@ public class BaseApiController : ControllerBase
 
     protected T GetService<T>() where T : notnull => HttpContext.RequestServices.GetRequiredService<T>();
 
-    protected async ValueTask RefreshTokenAsync(UserTable user, int expires = 24)
+    protected async ValueTask<int> RefreshTokenAsync(UserTable user)
     {
         var _user = GetService<UserService>();
         var _jwt = GetService<JwtService>();
+
+        var expireHours = await _db.Queryable<SettingTable>()
+            .Where(s => s.Key == SettingKeys.Site.Security.Jwt.ExpireHours)
+            .FirstAsync();
+
+        var hours = expireHours.GetValue<int>();
 
         string token = await _jwt.IssueJwtToken(user);
 
@@ -39,7 +45,10 @@ public class BaseApiController : ControllerBase
             HttpOnly = true,
             Secure = true,
             SameSite = SameSiteMode.Lax,
-            Expires = DateTimeOffset.UtcNow.AddHours(expires)
+            Expires = DateTimeOffset.UtcNow.AddHours(hours),
+            Path = "/"
         });
+
+        return hours;
     }
 }
