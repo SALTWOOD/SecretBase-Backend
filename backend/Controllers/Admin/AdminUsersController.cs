@@ -8,11 +8,8 @@ namespace backend.Controllers.Admin;
 [Authorize(Policy = "AdminOnly")]
 [ApiController]
 [Route("admin/users")]
-public class UserAdminController : BaseApiController
+public class UserAdminController(BaseDeps deps) : BaseApiController(deps)
 {
-    public UserAdminController(ISqlSugarClient db, ILogger<BaseApiController> logger)
-        : base(db, logger) { }
-
     /// <summary>
     /// Get all registered invites
     /// </summary>

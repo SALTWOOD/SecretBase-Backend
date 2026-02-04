@@ -12,11 +12,8 @@ public record UpdateInvitationRequest(bool? IsDisabled, int? Uses, int? HoursVal
 [Authorize(Policy = "AdminOnly")]
 [ApiController]
 [Route("admin/invitations")]
-public class InvitationAdminController : BaseApiController
+public class InvitationAdminController(BaseDeps deps) : BaseApiController(deps)
 {
-    public InvitationAdminController(ISqlSugarClient db, ILogger<BaseApiController> logger)
-        : base(db, logger) { }
-
     private static string GenerateSecureCode()
     {
         const string chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";

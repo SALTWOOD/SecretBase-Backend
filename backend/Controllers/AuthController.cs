@@ -10,12 +10,8 @@ using SqlSugar;
 namespace backend.Controllers;
 
 [Route("auth")]
-public class AuthController : BaseApiController
+public class AuthController(BaseServices deps) : BaseApiController(deps)
 {
-    public AuthController(ISqlSugarClient db, ILogger<BaseApiController> logger) : base(db, logger)
-    {
-    }
-
     [HttpPost("login")]
     [ValidateCaptcha]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
@@ -45,8 +41,14 @@ public class AuthController : BaseApiController
 
     [HttpPost("logout")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> Logout()
+    public async Task<IActionResult> Logout([FromServices] SessionService sessionService)
     {
+        if (Request.Cookies.TryGetValue(Constants.AUTH_TOKEN_COOKIE_NAME, out var token))
+        {
+            // revoke token
+            await sessionService.RemoveSessionAsync(token);
+        }
+
         CookieOptions options = new CookieOptions
         {
             HttpOnly = true,
@@ -63,9 +65,9 @@ public class AuthController : BaseApiController
     [ProducesResponseType(typeof(UserTable), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> Register([FromBody] AuthRegisterModel model)
+    public async Task<IActionResult> Register([FromBody] AuthRegisterModel model, [FromServices] SettingService setting)
     {
-        bool enabled = await GetService<SettingService>().Get<bool>(SettingKeys.Site.User.Registration.Enabled);
+        bool enabled = await setting.Get<bool>(SettingKeys.Site.User.Registration.Enabled);
         if (!enabled)
             return StatusCode(
                 StatusCodes.Status403Forbidden,
@@ -73,7 +75,7 @@ public class AuthController : BaseApiController
             );
 
 
-        bool forceInvitation = await GetService<SettingService>().Get<bool>(SettingKeys.Site.User.Registration.ForceInvitation);
+        bool forceInvitation = await setting.Get<bool>(SettingKeys.Site.User.Registration.ForceInvitation);
         InviteTable? invite = await Utils.GetInvite(_db, model.InviteCode);
         if (forceInvitation && invite == null)
             return StatusCode(

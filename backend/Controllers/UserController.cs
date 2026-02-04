@@ -8,12 +8,8 @@ using SqlSugar;
 namespace backend.Controllers;
 
 [Route("user")]
-public class UserController : BaseApiController
+public class UserController(BaseDeps deps) : BaseApiController(deps)
 {
-    public UserController(ISqlSugarClient db, ILogger<BaseApiController> logger) : base(db, logger)
-    {
-    }
-
     [Authorize]
     [HttpGet("profile")]
     [ProducesResponseType(typeof(UserTable), StatusCodes.Status200OK)]

@@ -96,12 +96,11 @@ public static class SettingKeys
         {
             public const string Prefix = Site.Prefix + "security.";
 
-            public static class Jwt
+            public static class Cookie
             {
-                public const string Prefix = Security.Prefix + "jwt.";
-                public const string Secret = Prefix + "secret";
-                public const string Issuer = Prefix + "issuer";
-                public const string Audience = Prefix + "audience";
+                public const string Prefix = Security.Prefix + "cookie.";
+                public const string Length = Prefix + "length";
+                public const string AutoRenew = Prefix + "auto_renew";
                 public const string ExpireHours = Prefix + "expire_hours";
             }
         }

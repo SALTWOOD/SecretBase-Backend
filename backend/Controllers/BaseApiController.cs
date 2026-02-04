@@ -10,33 +10,21 @@ namespace backend.Controllers;
 [ApiController]
 [Route("[controller]")]
 [Produces(MediaTypeNames.Application.Json)]
-public class BaseApiController : ControllerBase
+public class BaseApiController(BaseServices deps) : ControllerBase
 {
-    protected ISqlSugarClient _db;
-    protected ILogger<BaseApiController> _logger;
-
-    public BaseApiController(ISqlSugarClient db, ILogger<BaseApiController> logger)
-    {
-        this._db = db;
-        this._logger = logger;
-    }
+    protected readonly ISqlSugarClient _db = deps.Db;
+    protected readonly SessionService _session = deps.Session;
+    protected readonly SettingService _setting = deps.Setting;
 
     protected int CurrentUserId =>
         int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
         ?? throw new UnauthorizedAccessException("Invalid user identity."));
 
-    protected T GetService<T>() where T : notnull => HttpContext.RequestServices.GetRequiredService<T>();
-
     protected async ValueTask<int> RefreshTokenAsync(UserTable user)
     {
-        var _jwt = GetService<SessionService>();
+        var hours = await _setting.Get<int>(SettingKeys.Site.Security.Cookie.ExpireHours);
 
-        var expireHours = await _db.Queryable<SettingTable>()
-            .FirstAsync(s => s.Key == SettingKeys.Site.Security.Jwt.ExpireHours);
-
-        var hours = expireHours.GetValue<int>();
-
-        string token = await _jwt.CreateSessionAsync(user);
+        string token = await _session.CreateSessionAsync(user);
 
         Response.Cookies.Append(Constants.AUTH_TOKEN_COOKIE_NAME, token, new CookieOptions
         {
