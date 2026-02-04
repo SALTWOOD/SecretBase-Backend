@@ -33,7 +33,7 @@ public class AuthController : BaseApiController
             return BadRequest(new MessageResponse("Invalid email or password."));
         }
 
-        await GetService<UserService>().UpdateLastLoginAsync(user, HttpContext);
+        await UpdateLastLoginAsync(user, HttpContext);
         int expires = await RefreshTokenAsync(user);
         return Ok(new
         {
@@ -103,7 +103,7 @@ public class AuthController : BaseApiController
         };
         await _db.Insertable(newUser).ExecuteCommandAsync();
 
-        await GetService<UserService>().UpdateLastLoginAsync(newUser, HttpContext);
+        await UpdateLastLoginAsync(newUser, HttpContext);
         await RefreshTokenAsync(newUser);
         return Ok(newUser);
     }
@@ -123,7 +123,7 @@ public class AuthController : BaseApiController
             return Unauthorized(new { message = "User not found." });
         }
 
-        await GetService<UserService>().UpdateLastLoginAsync(user, HttpContext);
+        await UpdateLastLoginAsync(user, HttpContext);
         int expires = await RefreshTokenAsync(user);
         return Ok(new
         {

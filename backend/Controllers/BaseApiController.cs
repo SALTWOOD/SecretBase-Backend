@@ -29,7 +29,6 @@ public class BaseApiController : ControllerBase
 
     protected async ValueTask<int> RefreshTokenAsync(UserTable user)
     {
-        var _user = GetService<UserService>();
         var _jwt = GetService<SessionService>();
 
         var expireHours = await _db.Queryable<SettingTable>()
@@ -49,5 +48,20 @@ public class BaseApiController : ControllerBase
         });
 
         return hours;
+    }
+
+    public async Task UpdateLastLoginAsync(UserTable user, HttpContext context)
+    {
+        var lastLogin = new LastLogin
+        {
+            Time = DateTime.UtcNow,
+            IpAddress = context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            UserAgent = context.Request.Headers.UserAgent.ToString()
+        };
+
+        await _db.Updateable<UserTable>()
+                .SetColumns(u => u.LastLoginInfo == lastLogin)
+                .Where(u => u.Id == user.Id)
+                .ExecuteCommandAsync();
     }
 }
