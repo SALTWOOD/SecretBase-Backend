@@ -50,7 +50,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer
 
 #region Business Services
 builder.Services.AddScoped<ICapValidateService, CapValidateService>();
-builder.Services.AddScoped<JwtService>();
+builder.Services.AddScoped<SessionService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<SettingService>();
 #endregion

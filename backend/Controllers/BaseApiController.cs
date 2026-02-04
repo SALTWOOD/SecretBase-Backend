@@ -30,14 +30,14 @@ public class BaseApiController : ControllerBase
     protected async ValueTask<int> RefreshTokenAsync(UserTable user)
     {
         var _user = GetService<UserService>();
-        var _jwt = GetService<JwtService>();
+        var _jwt = GetService<SessionService>();
 
         var expireHours = await _db.Queryable<SettingTable>()
             .FirstAsync(s => s.Key == SettingKeys.Site.Security.Jwt.ExpireHours);
 
         var hours = expireHours.GetValue<int>();
 
-        string token = await _jwt.IssueJwtToken(user);
+        string token = await _jwt.CreateSessionAsync(user);
 
         Response.Cookies.Append(Constants.AUTH_TOKEN_COOKIE_NAME, token, new CookieOptions
         {
