@@ -52,6 +52,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer
 builder.Services.AddScoped<ICapValidateService, CapValidateService>();
 builder.Services.AddScoped<SessionService>();
 builder.Services.AddScoped<SettingService>();
+builder.Services.AddScoped<BaseServices>();
 #endregion
 
 #region Auth & Rate Limiter
