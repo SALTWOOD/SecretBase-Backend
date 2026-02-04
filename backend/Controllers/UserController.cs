@@ -1,6 +1,6 @@
 ﻿using backend.Filters;
 using backend.Tables;
-using backend.Types;
+using backend.Types.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SqlSugar;

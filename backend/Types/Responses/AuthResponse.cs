@@ -1,6 +1,6 @@
 ﻿using backend.Tables;
 
-namespace backend.Types;
+namespace backend.Types.Response;
 
 public readonly record struct UserBriefDto(string Username, int Role);
 

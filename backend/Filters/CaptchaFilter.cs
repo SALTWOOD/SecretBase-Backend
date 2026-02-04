@@ -1,5 +1,5 @@
-﻿using backend.Models;
-using backend.Services;
+﻿using backend.Services;
+using backend.Types.Request;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 

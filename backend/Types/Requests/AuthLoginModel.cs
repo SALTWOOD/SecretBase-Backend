@@ -1,4 +1,4 @@
-﻿namespace backend.Models;
+﻿namespace backend.Types.Request;
 
 public class AuthLoginModel : CaptchaRequestBase
 {
