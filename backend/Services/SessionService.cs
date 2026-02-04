@@ -47,7 +47,7 @@ public class SessionService
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, session.GetProperty("Id").GetInt32().ToString()),
-            new Claim(ClaimTypes.Role, session.GetProperty("Role").GetString() ?? "User")
+            new Claim(ClaimTypes.Role, session.GetProperty("Role").GetInt32().ToString())
         };
 
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "SimpleSession"));
