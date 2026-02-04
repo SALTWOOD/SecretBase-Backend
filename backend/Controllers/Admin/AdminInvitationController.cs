@@ -1,4 +1,5 @@
-﻿using backend.Tables;
+﻿using backend.Services;
+using backend.Tables;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SqlSugar;
@@ -12,7 +13,7 @@ public record UpdateInvitationRequest(bool? IsDisabled, int? Uses, int? HoursVal
 [Authorize(Policy = "AdminOnly")]
 [ApiController]
 [Route("admin/invitations")]
-public class InvitationAdminController(BaseDeps deps) : BaseApiController(deps)
+public class InvitationAdminController(BaseServices deps) : BaseApiController(deps)
 {
     private static string GenerateSecureCode()
     {

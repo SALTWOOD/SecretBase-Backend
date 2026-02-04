@@ -1,6 +1,8 @@
 ﻿using backend.Tables;
+using SqlSugar;
 using StackExchange.Redis;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace backend.Services;
@@ -8,16 +10,19 @@ namespace backend.Services;
 public class SessionService
 {
     private readonly IDatabase _redis;
+    private readonly SettingService _setting;
     private const string SessionPrefix = "user_session:";
 
-    public SessionService(IConnectionMultiplexer redis)
+    public SessionService(IConnectionMultiplexer redis, SettingService setting)
     {
         _redis = redis.GetDatabase();
+        _setting = setting;
     }
 
     public async Task<string> CreateSessionAsync(UserTable user)
     {
-        var token = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
+        var hours = await _setting.Get<int>(SettingKeys.Site.Security.Cookie.ExpireHours);
+        var token = Utils.GenerateRandomSecret(64);
         var key = $"{SessionPrefix}{token}";
 
         var sessionData = new
@@ -27,7 +32,7 @@ public class SessionService
             CreatedAt = DateTime.UtcNow
         };
 
-        await _redis.StringSetAsync(key, JsonSerializer.Serialize(sessionData), TimeSpan.FromHours(24));
+        await _redis.StringSetAsync(key, JsonSerializer.Serialize(sessionData), TimeSpan.FromHours(hours));
 
         return token;
     }
@@ -45,7 +50,7 @@ public class SessionService
             new Claim(ClaimTypes.Role, session.GetProperty("Role").GetString() ?? "User")
         };
 
-        return new ClaimsPrincipal(new ClaimsIdentity(claims, "SimpleCookie"));
+        return new ClaimsPrincipal(new ClaimsIdentity(claims, "SimpleSession"));
     }
 
     public async Task RemoveSessionAsync(string token)

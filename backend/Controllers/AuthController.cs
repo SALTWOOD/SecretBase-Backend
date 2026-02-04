@@ -31,11 +31,14 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
 
         await UpdateLastLoginAsync(user, HttpContext);
         int expires = await RefreshTokenAsync(user);
-        return Ok(new
+
+        var autoRenew = await _setting.Get<bool>(SettingKeys.Site.Security.Cookie.AutoRenew);
+
+        return Ok(new AuthResponse
         {
-            message = "Login successful.",
-            user,
-            expires = DateTime.UtcNow.AddHours(expires)
+            Message = "Login successful.",
+            User = user,
+            Expires = autoRenew ? DateTime.UtcNow.AddHours(expires) : null
         });
     }
 

@@ -11,19 +11,11 @@ public class DatabaseInitializer
         var defaultSettings = new Dictionary<string, object>
         {
             {
-                SettingKeys.Site.Security.Jwt.Secret,
-                GenerateRandomSecret()
+                SettingKeys.Site.Security.Cookie.AutoRenew,
+                true
             },
             {
-                SettingKeys.Site.Security.Jwt.Issuer,
-                "your-api-domain.com"
-            },
-            {
-                SettingKeys.Site.Security.Jwt.Audience,
-                "your-nuxt-app.com"
-            },
-            {
-                SettingKeys.Site.Security.Jwt.ExpireHours,
+                SettingKeys.Site.Security.Cookie.ExpireHours,
                 72
             },
             {
@@ -74,13 +66,5 @@ public class DatabaseInitializer
             db.Insertable(admin).ExecuteCommand();
             Console.WriteLine($"[DatabaseInitializer] Created default admin user. Username: 'admin', Password: '{password}'");
         }
-    }
-
-    private static string GenerateRandomSecret()
-    {
-        var bytes = new byte[32];
-        using var rng = RandomNumberGenerator.Create();
-        rng.GetBytes(bytes);
-        return Convert.ToBase64String(bytes);
     }
 }

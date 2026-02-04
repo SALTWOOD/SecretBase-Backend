@@ -55,8 +55,8 @@ builder.Services.AddScoped<SettingService>();
 #endregion
 
 #region Auth & Rate Limiter
-builder.Services.AddAuthentication("SimpleCookie")
-    .AddScheme<AuthenticationSchemeOptions, CookieAuthenticator>("SimpleCookie", null);
+builder.Services.AddAuthentication("SimpleSession")
+    .AddScheme<AuthenticationSchemeOptions, CookieAuthenticator>("SimpleSession", null);
 
 builder.Services.AddAuthorization(options =>
 {

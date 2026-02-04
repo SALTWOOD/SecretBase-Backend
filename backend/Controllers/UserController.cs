@@ -1,4 +1,5 @@
 ﻿using backend.Filters;
+using backend.Services;
 using backend.Tables;
 using backend.Types.Response;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +9,7 @@ using SqlSugar;
 namespace backend.Controllers;
 
 [Route("user")]
-public class UserController(BaseDeps deps) : BaseApiController(deps)
+public class UserController(BaseServices deps) : BaseApiController(deps)
 {
     [Authorize]
     [HttpGet("profile")]

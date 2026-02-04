@@ -1,4 +1,5 @@
-﻿using backend.Tables;
+﻿using backend.Services;
+using backend.Tables;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SqlSugar;
@@ -8,7 +9,7 @@ namespace backend.Controllers.Admin;
 [Authorize(Policy = "AdminOnly")]
 [ApiController]
 [Route("admin/users")]
-public class UserAdminController(BaseDeps deps) : BaseApiController(deps)
+public class UserAdminController(BaseServices deps) : BaseApiController(deps)
 {
     /// <summary>
     /// Get all registered invites

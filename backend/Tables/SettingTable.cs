@@ -99,7 +99,6 @@ public static class SettingKeys
             public static class Cookie
             {
                 public const string Prefix = Security.Prefix + "cookie.";
-                public const string Length = Prefix + "length";
                 public const string AutoRenew = Prefix + "auto_renew";
                 public const string ExpireHours = Prefix + "expire_hours";
             }
