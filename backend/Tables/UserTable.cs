@@ -37,7 +37,7 @@ public class UserTable
     public string? TotpSecret { get; set; }
 
     [JsonIgnore]
-    [SugarColumn(IsNullable = true, ColumnDataType = "text[]")]
+    [SugarColumn(IsNullable = true, ColumnDataType = "text[]", IsArray = true)]
     public string[]? TotpRecoveryCodes { get; set; }
 
     [JsonIgnore]
