@@ -67,13 +67,13 @@ public class UserController(BaseServices deps) : BaseApiController(deps)
     public async Task<IActionResult> UpdateAvatar(IFormFile file)
     {
         if (file == null)
-            return BadRequest("No file provided.");
+            return BadRequest(new MessageResponse { Message = "No file provided." });
         if (file.Length > 2 * 1024 * 1024)
             return BadRequest($"Image too big. Expected lower than 2097152 bytes, but found ${file.Length} bytes.");
 
         var extension = Path.GetExtension(file.FileName).ToLower();
         var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
-        if (!allowedExtensions.Contains(extension)) return BadRequest("Unsupported image format.");
+        if (!allowedExtensions.Contains(extension)) return BadRequest(new MessageResponse { Message = "Unsupported image format." });
 
         try
         {

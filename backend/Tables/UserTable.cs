@@ -32,8 +32,13 @@ public class UserTable
     [SugarColumn(IsNullable = true)]
     public int? UsedInviteId { get; set; }
 
-    [Navigate(NavigateType.OneToOne, nameof(UsedInviteId))]
-    public InviteTable? UsedInvite { get; set; }
+    [JsonIgnore]
+    [SugarColumn(IsNullable = true)]
+    public string? TotpSecret { get; set; }
+
+    [JsonIgnore]
+    [SugarColumn(IsNullable = true, ColumnDataType = "text[]")]
+    public string[]? TotpRecoveryCodes { get; set; }
 
     [JsonIgnore]
     [Navigate(NavigateType.OneToMany, nameof(InviteTable.CreatorId))]

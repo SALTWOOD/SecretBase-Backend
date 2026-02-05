@@ -13,6 +13,13 @@ public static class Utils
         return randomString;
     }
 
+    public static string GenerateSecureCode()
+    {
+        const string chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+        var result = RandomNumberGenerator.GetString(chars, 20);
+        return string.Join("-", Enumerable.Range(0, 4).Select(i => result.Substring(i * 5, 5)));
+    }
+
     public static async Task<InviteTable?> GetInvite(ISqlSugarClient db, string? code, bool doIncrement = true)
     {
         if (string.IsNullOrEmpty(code)) return null;

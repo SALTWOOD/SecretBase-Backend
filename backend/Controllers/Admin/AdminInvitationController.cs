@@ -15,13 +15,6 @@ public record UpdateInvitationRequest(bool? IsDisabled, int? Uses, int? HoursVal
 [Route("admin/invitations")]
 public class InvitationAdminController(BaseServices deps) : BaseApiController(deps)
 {
-    private static string GenerateSecureCode()
-    {
-        const string chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-        var result = RandomNumberGenerator.GetString(chars, 20);
-        return string.Join("-", Enumerable.Range(0, 4).Select(i => result.Substring(i * 5, 5)));
-    }
-
     [HttpGet]
     [ProducesResponseType<List<InviteTable>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetInvitations([FromQuery] int page = 1, [FromQuery] int size = 20)
@@ -53,7 +46,7 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
         InviteTable invite = new InviteTable
         {
             MaxUses = request.Uses,
-            Code = GenerateSecureCode(),
+            Code = Utils.GenerateSecureCode(),
             CreatedAt = createdAt,
             ExpireAt = request.HoursValid > 0 ? createdAt.AddHours(request.HoursValid) : null,
             CreatorId = CurrentUserId,

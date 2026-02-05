@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using System.Text;
 using System.Text.Json;
 
-namespace backend.Controllers;
+namespace backend.Controllers.Auth;
 
 [ApiController]
 [Route("auth/webauthn")]
@@ -16,8 +16,8 @@ public class WebAuthnController : BaseApiController
 {
     private readonly WebAuthnService _service;
     private readonly IFido2 _fido2;
-    private const string REG_PREFIX = "webauthn:reg:";
-    private const string LOGIN_PREFIX = "webauthn:login:";
+    private const string REG_PREFIX = "webauthn:reg";
+    private const string LOGIN_PREFIX = "webauthn:login";
 
     public WebAuthnController(BaseServices deps, WebAuthnService service, IFido2 fido2) : base(deps)
     {
@@ -32,7 +32,7 @@ public class WebAuthnController : BaseApiController
         var user = await CurrentUser;
         var options = _service.GetRegistrationOptions(user.Id, user.Username);
 
-        var cacheKey = $"{REG_PREFIX}{Base64UrlTextEncoder.Encode(options.Challenge)}";
+        var cacheKey = $"{REG_PREFIX}:{Base64UrlTextEncoder.Encode(options.Challenge)}";
         _redis.StringSet(cacheKey, options.ToJson(), TimeSpan.FromMinutes(5));
 
         return Ok(options);
@@ -46,7 +46,7 @@ public class WebAuthnController : BaseApiController
         using JsonDocument doc = JsonDocument.Parse(response.Response.ClientDataJson);
         var challenge = doc.RootElement.GetProperty("challenge").GetString();
 
-        var cacheKey = $"{REG_PREFIX}{challenge}";
+        var cacheKey = $"{REG_PREFIX}:{challenge}";
 
         var value = await _redis.StringGetAsync(cacheKey);
         if (value.IsNullOrEmpty) return BadRequest(new MessageResponse { Message = "Challenge not found" });
@@ -66,7 +66,7 @@ public class WebAuthnController : BaseApiController
         using JsonDocument doc = JsonDocument.Parse(response.Response.ClientDataJson) ;
         var challenge = doc.RootElement.GetProperty("challenge").GetString();
 
-        var cacheKey = $"{LOGIN_PREFIX}{challenge}";
+        var cacheKey = $"{LOGIN_PREFIX}:{challenge}";
 
         var json = await _redis.StringGetAsync(cacheKey);
         if (json.IsNullOrEmpty) return BadRequest(new MessageResponse { Message = "Challenge expired or invalid" });
@@ -109,7 +109,7 @@ public class WebAuthnController : BaseApiController
             UserVerification = UserVerificationRequirement.Preferred
         });
 
-        var cacheKey = $"{LOGIN_PREFIX}{Base64UrlTextEncoder.Encode(options.Challenge)}";
+        var cacheKey = $"{LOGIN_PREFIX}:{Base64UrlTextEncoder.Encode(options.Challenge)}";
         await _redis.StringSetAsync(cacheKey, options.ToJson(), TimeSpan.FromMinutes(5));
 
         return Ok(options);
