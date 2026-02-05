@@ -47,7 +47,7 @@ public class TwoFactorPolicyController : BaseApiController
     }
 
     [HttpPost("disable")]
-    public async Task<IActionResult> DisableForce2Fa([FromBody] TotpVerifyRequest request)
+    public async Task<IActionResult> DisableForce2Fa()
     {
         var user = await CurrentUser;
 
