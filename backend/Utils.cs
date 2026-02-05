@@ -18,10 +18,9 @@ public static class Utils
         if (string.IsNullOrEmpty(code)) return null;
         InviteTable invite = await db.Queryable<InviteTable>()
             .FirstAsync(it =>
-                it.Code == code &&
-                it.IsValid
+                it.Code == code
             );
-        if (doIncrement && invite != null)
+        if (doIncrement && invite != null && invite.IsValid)
         {
             await db.Updateable<InviteTable>()
                 .Where(it => it.Id == invite.Id)
