@@ -1,5 +1,5 @@
 ﻿using backend.Types.Request;
-using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace backend.Services;
 
@@ -46,11 +46,7 @@ public class CapValidateService : ICapValidateService
 
             if (!response.IsSuccessStatusCode) return false;
 
-            var responseString = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<CapRemoteResponse>(responseString, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            var result = await response.Content.ReadFromJsonAsync<CapRemoteResponse>();
 
             return result?.Success ?? false;
         }
@@ -63,5 +59,6 @@ public class CapValidateService : ICapValidateService
 
 public class CapRemoteResponse
 {
+    [JsonPropertyName("success")]
     public bool Success { get; set; }
 }

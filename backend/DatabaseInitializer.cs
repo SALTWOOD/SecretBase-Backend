@@ -1,6 +1,5 @@
 ﻿using backend.Tables;
 using SqlSugar;
-using System.Security.Cryptography;
 
 namespace backend;
 

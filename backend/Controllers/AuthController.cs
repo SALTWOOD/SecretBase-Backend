@@ -5,7 +5,6 @@ using backend.Types.Request;
 using backend.Types.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SqlSugar;
 
 namespace backend.Controllers;
 

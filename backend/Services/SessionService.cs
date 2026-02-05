@@ -1,11 +1,15 @@
 ﻿using backend.Tables;
-using SqlSugar;
 using StackExchange.Redis;
 using System.Security.Claims;
-using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace backend.Services;
+
+public readonly record struct SessionData(
+    int Id,
+    UserRole Role,
+    DateTime CreatedAt
+);
 
 public class SessionService
 {
@@ -25,10 +29,10 @@ public class SessionService
         var token = Utils.GenerateRandomSecret(64);
         var key = $"{SessionPrefix}{token}";
 
-        var sessionData = new
+        SessionData sessionData = new SessionData
         {
-            user.Id,
-            user.Role,
+            Id = user.Id,
+            Role = user.Role,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -42,12 +46,12 @@ public class SessionService
         var data = await _redis.StringGetAsync($"{SessionPrefix}{token}");
         if (data.IsNullOrEmpty) return null;
 
-        var session = JsonSerializer.Deserialize<JsonElement>(data.ToString());
+        var session = JsonSerializer.Deserialize<SessionData>(data.ToString());
 
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, session.GetProperty("Id").GetInt32().ToString()),
-            new Claim(ClaimTypes.Role, session.GetProperty("Role").GetInt32().ToString())
+            new Claim(ClaimTypes.NameIdentifier, session.Id.ToString()),
+            new Claim(ClaimTypes.Role, session.Role.ToString())
         };
 
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "SimpleSession"));

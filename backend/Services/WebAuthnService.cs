@@ -1,8 +1,7 @@
-﻿using Fido2NetLib;
+﻿using backend.Tables;
+using Fido2NetLib;
 using Fido2NetLib.Objects;
-using backend.Tables;
 using SqlSugar;
-using Microsoft.AspNetCore.WebUtilities;
 
 namespace backend.Services;
 
@@ -55,7 +54,7 @@ public class WebAuthnService
         var res = await _fido2.MakeNewCredentialAsync(new MakeNewCredentialParams
         {
             AttestationResponse = attestationResponse,
-            OriginalOptions =origOptions,
+            OriginalOptions = origOptions,
             IsCredentialIdUniqueToUserCallback = async (args, ct) =>
             {
                 return !await _db.Queryable<UserCredentialTable>()

@@ -5,12 +5,8 @@ using Fido2NetLib;
 using Fido2NetLib.Objects;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System.Buffers.Text;
-using System.Collections.Concurrent;
 using System.Text;
-using System.Threading.Tasks;
+using System.Text.Json;
 
 namespace backend.Controllers;
 
@@ -47,9 +43,8 @@ public class WebAuthnController : BaseApiController
     [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> VerifyRegistration([FromBody] AuthenticatorAttestationRawResponse response)
     {
-        var clientDataJson = Encoding.UTF8.GetString(response.Response.ClientDataJson);
-        var clientData = JObject.Parse(clientDataJson);
-        var challenge = clientData["challenge"]?.ToString();
+        using JsonDocument doc = JsonDocument.Parse(response.Response.ClientDataJson);
+        var challenge = doc.RootElement.GetProperty("challenge").GetString();
 
         var cacheKey = $"{REG_PREFIX}{challenge}";
 
@@ -68,9 +63,8 @@ public class WebAuthnController : BaseApiController
     [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> VerifyLogin([FromBody] AuthenticatorAssertionRawResponse response)
     {
-        var clientDataJson = Encoding.UTF8.GetString(response.Response.ClientDataJson);
-        var clientData = JObject.Parse(clientDataJson);
-        var challenge = clientData["challenge"]?.ToString();
+        using JsonDocument doc = JsonDocument.Parse(response.Response.ClientDataJson) ;
+        var challenge = doc.RootElement.GetProperty("challenge").GetString();
 
         var cacheKey = $"{LOGIN_PREFIX}{challenge}";
 

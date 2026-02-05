@@ -1,5 +1,4 @@
-﻿using backend.Tables;
-using SqlSugar;
+﻿using SqlSugar;
 using System.Text.Json.Serialization;
 
 namespace backend.Tables;

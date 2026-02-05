@@ -72,7 +72,7 @@ builder.Services.AddAuthentication("SimpleSession")
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("AdminOnly", policy => 
+    options.AddPolicy("AdminOnly", policy =>
         policy.AddRequirements(new MinimumRoleRequirement(UserRole.Admin)));
 });
 

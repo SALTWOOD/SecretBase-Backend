@@ -1,5 +1,5 @@
-﻿using Newtonsoft.Json;
-using SqlSugar;
+﻿using SqlSugar;
+using System.Text.Json;
 
 namespace backend.Tables;
 
@@ -32,7 +32,7 @@ public class SettingTable
 
         if (Type == SettingType.Json || (!underlyingType.IsPrimitive && underlyingType != typeof(string)))
         {
-            return JsonConvert.DeserializeObject<T>(Value);
+            return JsonSerializer.Deserialize<T>(Value);
         }
 
         if (underlyingType.IsEnum)
@@ -78,7 +78,7 @@ public class SettingTable
                 Type = SettingType.Boolean;
                 break;
             default:
-                Value = JsonConvert.SerializeObject(val);
+                Value = JsonSerializer.Serialize(val);
                 Type = SettingType.Json;
                 break;
         }
@@ -107,7 +107,7 @@ public static class SettingKeys
         public static class User
         {
             public const string Prefix = Site.Prefix + "user.";
-            
+
             public static class Registration
             {
                 public const string Prefix = User.Prefix + "registration.";
