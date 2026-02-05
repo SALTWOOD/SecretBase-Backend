@@ -22,6 +22,8 @@ public class BaseApiController(BaseServices deps) : ControllerBase
         int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
         ?? throw new UnauthorizedAccessException("Invalid user identity."));
 
+    protected Task<UserTable> CurrentUser => _db.Queryable<UserTable>().FirstAsync(it => it.Id == CurrentUserId);
+
     protected async ValueTask<int> RefreshTokenAsync(UserTable user)
     {
         var hours = await _setting.Get<int>(SettingKeys.Site.Security.Cookie.ExpireHours);

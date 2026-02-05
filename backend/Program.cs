@@ -55,6 +55,7 @@ builder.Services.AddScoped<ICapValidateService, CapValidateService>();
 builder.Services.AddScoped<SessionService>();
 builder.Services.AddScoped<SettingService>();
 builder.Services.AddScoped<BaseServices>();
+builder.Services.AddScoped<WebAuthnService>();
 builder.Services.AddFido2(options =>
 {
     options.ServerDomain = builder.Configuration["WebAuthn:ServerDomain"] ?? "localhost";
@@ -116,9 +117,10 @@ using (var scope = app.Services.CreateScope())
     {
         var db = services.GetRequiredService<ISqlSugarClient>();
         db.CodeFirst.InitTables(
-            typeof(backend.Tables.UserTable),
-            typeof(backend.Tables.InviteTable),
-            typeof(backend.Tables.SettingTable)
+            typeof(UserTable),
+            typeof(InviteTable),
+            typeof(SettingTable),
+            typeof(UserCredentialTable)
         );
         await DatabaseInitializer.InitializeAsync(db);
     }
