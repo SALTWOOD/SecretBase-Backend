@@ -41,6 +41,9 @@ public class UserTable
     public string[]? TotpRecoveryCodes { get; set; }
 
     [JsonIgnore]
+    public bool ForceTwoFactor { get; set; }
+
+    [JsonIgnore]
     [Navigate(NavigateType.OneToMany, nameof(InviteTable.CreatorId))]
     public List<InviteTable>? MyIssuedInvites { get; set; }
 }
