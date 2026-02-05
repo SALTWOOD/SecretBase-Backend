@@ -113,22 +113,14 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    try
-    {
-        var db = services.GetRequiredService<ISqlSugarClient>();
-        db.CodeFirst.InitTables(
-            typeof(UserTable),
-            typeof(InviteTable),
-            typeof(SettingTable),
-            typeof(UserCredentialTable)
-        );
-        await DatabaseInitializer.InitializeAsync(db);
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Database init failed.");
-    }
+    var db = services.GetRequiredService<ISqlSugarClient>();
+    db.CodeFirst.InitTables(
+        typeof(UserTable),
+        typeof(InviteTable),
+        typeof(SettingTable),
+        typeof(UserCredentialTable)
+    );
+    await DatabaseInitializer.InitializeAsync(db);
 }
 #endregion
 
