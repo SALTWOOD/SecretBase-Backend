@@ -2,6 +2,7 @@
 using backend.Tables;
 using Microsoft.AspNetCore.Mvc;
 using SqlSugar;
+using StackExchange.Redis;
 using System.Net.Mime;
 using System.Security.Claims;
 
@@ -12,7 +13,8 @@ namespace backend.Controllers;
 [Produces(MediaTypeNames.Application.Json)]
 public class BaseApiController(BaseServices deps) : ControllerBase
 {
-    protected readonly ISqlSugarClient _db = deps.Db;
+    protected readonly ISqlSugarClient _db = deps.Database;
+    protected readonly IDatabase _redis = deps.Redis.GetDatabase();
     protected readonly SessionService _session = deps.Session;
     protected readonly SettingService _setting = deps.Setting;
 

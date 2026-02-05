@@ -1,7 +1,9 @@
 using backend;
 using backend.Filters;
 using backend.Services;
+using backend.Tables;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using SqlSugar;
 using StackExchange.Redis;
 using System.Threading.RateLimiting;
@@ -53,15 +55,24 @@ builder.Services.AddScoped<ICapValidateService, CapValidateService>();
 builder.Services.AddScoped<SessionService>();
 builder.Services.AddScoped<SettingService>();
 builder.Services.AddScoped<BaseServices>();
+builder.Services.AddFido2(options =>
+{
+    options.ServerDomain = builder.Configuration["WebAuthn:ServerDomain"] ?? "localhost";
+    options.ServerName = "SecretBase";
+    options.Origins = new HashSet<string> { builder.Configuration["WebAuthn:Origin"]! };
+    options.TimestampDriftTolerance = 300000;
+});
 #endregion
 
 #region Auth & Rate Limiter
+builder.Services.AddSingleton<IAuthorizationHandler, MinimumRoleHandler>();
 builder.Services.AddAuthentication("SimpleSession")
     .AddScheme<AuthenticationSchemeOptions, CookieAuthenticator>("SimpleSession", null);
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("AdminOnly", policy => 
+        policy.AddRequirements(new MinimumRoleRequirement(UserRole.Admin)));
 });
 
 builder.Services.AddRateLimiter(options =>
