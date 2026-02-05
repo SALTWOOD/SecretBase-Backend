@@ -9,6 +9,10 @@ using System.Text;
 
 namespace backend.Controllers.Auth.TwoFactor;
 
+public readonly record struct TotpVerifyRequest(string Code);
+public readonly record struct TotpRecoveryCodeRequest(string Code);
+public readonly record struct TotpSetupResponse(string Secret, string Url);
+
 [ApiController]
 [Route("auth/two-factor/totp")]
 public class TotpController : BaseApiController
@@ -20,7 +24,7 @@ public class TotpController : BaseApiController
 
 
     [HttpPost("setup")]
-    [ProducesResponseType<MessageResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<TotpSetupResponse>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Setup()
     {
         var user = await CurrentUser;
@@ -45,10 +49,10 @@ public class TotpController : BaseApiController
 
         await _redis.StringSetAsync($"{PREFIX}:{user.Id}", secretBase32, TimeSpan.FromMinutes(10));
 
-        return Ok(new
+        return Ok(new TotpSetupResponse
         {
-            secret = secretBase32,
-            qrCodeUrl
+            Secret = secretBase32,
+            Url = qrCodeUrl
         });
     }
 
@@ -98,5 +102,3 @@ public class TotpController : BaseApiController
     }
 }
 
-public readonly record struct TotpVerifyRequest(string Code);
-public readonly record struct TotpRecoveryCodeRequest(string Code);

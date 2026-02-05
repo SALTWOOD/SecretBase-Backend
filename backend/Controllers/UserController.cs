@@ -15,11 +15,7 @@ public class UserController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(typeof(UserTable), StatusCodes.Status200OK)]
     public async Task<IActionResult> Profile()
     {
-        var user = (await _db.Queryable<UserTable>()
-                     .InSingleAsync(CurrentUserId))
-                     .ThrowIfNull("User no longer exists.");
-
-        return Ok(user);
+        return Ok(await CurrentUser);
     }
 
     [Authorize]
