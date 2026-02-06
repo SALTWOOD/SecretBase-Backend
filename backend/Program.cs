@@ -114,13 +114,14 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var db = services.GetRequiredService<ISqlSugarClient>();
+    var setting = services.GetRequiredService<SettingService>();
     db.CodeFirst.InitTables(
         typeof(UserTable),
         typeof(InviteTable),
         typeof(SettingTable),
         typeof(UserCredentialTable)
     );
-    await DatabaseInitializer.InitializeAsync(db);
+    await DatabaseInitializer.InitializeAsync(db, setting);
 }
 #endregion
 

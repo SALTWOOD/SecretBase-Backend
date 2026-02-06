@@ -1,6 +1,7 @@
 ﻿using backend.Tables;
 using SqlSugar;
 using System.Collections.Concurrent;
+using System.Text.Json;
 
 namespace backend.Services;
 
@@ -8,7 +9,7 @@ public class SettingService(ISqlSugarClient db)
 {
     private static readonly ConcurrentDictionary<string, object?> _cache = new();
 
-    public async Task<T?> Get<T>(string key)
+    public async ValueTask<T?> Get<T>(string key)
     {
         if (_cache.TryGetValue(key, out var cachedValue))
             return (T?)cachedValue;
@@ -29,12 +30,27 @@ public class SettingService(ISqlSugarClient db)
         await db.Storageable(new SettingTable
         {
             Key = key,
-            Value = value?.ToString()
+            Value = JsonSerializer.Serialize(value)
         })
+        .DefaultAddElseUpdate()
         .ExecuteCommandAsync();
 
         _cache[key] = value;
     }
 
-    public void ClearCache() => _cache.Clear();
+    public async Task<bool> Exists(string key)
+    {
+        if (_cache.ContainsKey(key)) return true;
+        var val = await Get<object>(key);
+        return val != null;
+    }
+
+    public async Task Delete(string key)
+    {
+        await db.Deleteable<SettingTable>()
+            .Where(it => it.Key == key)
+            .ExecuteCommandAsync();
+
+        _cache.TryRemove(key, out _);
+    }
 }

@@ -8,11 +8,27 @@ using System.Text;
 
 namespace backend.Controllers.Auth.TwoFactor;
 
+public readonly record struct TwoFactorPolicyResponse(
+    TwoFactorStatus Totp
+);
+public readonly record struct TwoFactorStatus(bool Enabled);
+
 [ApiController]
 [Route("auth/two-factor/policy")]
 public class TwoFactorPolicyController : BaseApiController
 {
     public TwoFactorPolicyController(BaseServices deps) : base(deps) { }
+
+    [HttpGet]
+    [ProducesResponseType<TwoFactorPolicyResponse>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPolicy()
+    {
+        var user = await CurrentUser;
+        return Ok(new TwoFactorPolicyResponse
+        {
+            Totp = new TwoFactorStatus(!string.IsNullOrEmpty(user.TotpSecret))
+        });
+    }
 
     [HttpPost("enable")]
     [ProducesResponseType(StatusCodes.Status200OK)]

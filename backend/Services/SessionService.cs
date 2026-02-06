@@ -23,7 +23,7 @@ public class SessionService
         _setting = setting;
     }
 
-    public async Task<string> CreateSessionAsync(UserTable user)
+    public async Task<(string, int)> CreateSessionAsync(UserTable user)
     {
         var hours = await _setting.Get<int>(SettingKeys.Site.Security.Cookie.ExpireHours);
         var token = Utils.GenerateRandomSecret(64);
@@ -38,7 +38,7 @@ public class SessionService
 
         await _redis.StringSetAsync(key, JsonSerializer.Serialize(sessionData), TimeSpan.FromHours(hours));
 
-        return token;
+        return (token, hours);
     }
 
     public async Task<ClaimsPrincipal?> ValidateSessionAsync(string token)

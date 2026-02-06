@@ -26,9 +26,7 @@ public class BaseApiController(BaseServices deps) : ControllerBase
 
     protected async ValueTask<int> RefreshTokenAsync(UserTable user)
     {
-        var hours = await _setting.Get<int>(SettingKeys.Site.Security.Cookie.ExpireHours);
-
-        string token = await _session.CreateSessionAsync(user);
+        (string token, int hours) = await _session.CreateSessionAsync(user);
 
         Response.Cookies.Append(Constants.AUTH_TOKEN_COOKIE_NAME, token, new CookieOptions
         {
