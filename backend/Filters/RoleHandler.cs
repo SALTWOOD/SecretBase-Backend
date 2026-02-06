@@ -14,12 +14,14 @@ public class MinimumRoleHandler : AuthorizationHandler<MinimumRoleRequirement>
 {
     protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, MinimumRoleRequirement requirement)
     {
-        var roleClaim = context.User.FindFirst(ClaimTypes.Role);
+        var roleValue = context.User.FindFirstValue(ClaimTypes.Role);
 
-        if (roleClaim == null || !int.TryParse(roleClaim.Value, out var userRoleInt)) return Task.CompletedTask;
+        if (string.IsNullOrEmpty(roleValue)) return Task.CompletedTask;
 
-        var userRole = (UserRole)userRoleInt;
-        if (userRole >= requirement.MinimumRole) context.Succeed(requirement);
+        if (Enum.TryParse<UserRole>(roleValue, out var role))
+        {
+            if (role >= requirement.MinimumRole) context.Succeed(requirement);
+        }
 
         return Task.CompletedTask;
     }
