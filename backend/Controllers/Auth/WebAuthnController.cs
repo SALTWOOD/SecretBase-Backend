@@ -10,6 +10,10 @@ using System.Text.Json;
 
 namespace backend.Controllers.Auth;
 
+public readonly record struct CredentialUpdateModel(
+    string? Nickname
+);
+
 [ApiController]
 [Route("auth/webauthn")]
 public class WebAuthnController : BaseApiController
@@ -120,11 +124,22 @@ public class WebAuthnController : BaseApiController
     public async Task<IActionResult> ListCredentials()
         => Ok(await _service.GetUserCredentialsAsync(CurrentUserId));
 
-    [HttpDelete("credentials/{id}")]
+    [HttpDelete("credentials/{id:int}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> DeleteCredential(int id)
     {
         var success = await _service.DeleteCredentialAsync(id, CurrentUserId);
         return success ? Ok() : BadRequest();
+    }
+
+    [HttpPut("credentials/{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> PutCredential(int id, [FromBody] CredentialUpdateModel model)
+    {
+        if (model.Nickname != null)
+        {
+            await _service.UpdateDeviceNicknameAsync(id, CurrentUserId, model.Nickname);
+        }
+        return NoContent();
     }
 }

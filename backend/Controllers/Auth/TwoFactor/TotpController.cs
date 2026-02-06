@@ -81,6 +81,20 @@ public class TotpController : BaseApiController
         return BadRequest(new MessageResponse { Message = "Invalid code" });
     }
 
+    [HttpPost("disable")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Disable()
+    {
+        var user = await CurrentUser;
+        if (user.TotpSecret == null) return BadRequest(new MessageResponse { Message = "TOTP has not been set up yet" });
+        user.TotpSecret = null;
+        await _db.Updateable(user)
+            .UpdateColumns(it => new { it.TotpSecret })
+            .ExecuteCommandAsync();
+        return NoContent();
+    }
+
     [HttpPost("verify")]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]

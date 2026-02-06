@@ -9,7 +9,8 @@ using System.Text;
 namespace backend.Controllers.Auth.TwoFactor;
 
 public readonly record struct TwoFactorPolicyResponse(
-    TwoFactorStatus Totp
+    TwoFactorStatus Totp,
+    bool ForceTwoFactor
 );
 public readonly record struct TwoFactorStatus(bool Enabled);
 
@@ -26,7 +27,8 @@ public class TwoFactorPolicyController : BaseApiController
         var user = await CurrentUser;
         return Ok(new TwoFactorPolicyResponse
         {
-            Totp = new TwoFactorStatus(!string.IsNullOrEmpty(user.TotpSecret))
+            Totp = new TwoFactorStatus(!string.IsNullOrEmpty(user.TotpSecret)),
+            ForceTwoFactor = user.ForceTwoFactor
         });
     }
 
