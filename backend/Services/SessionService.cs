@@ -5,10 +5,23 @@ using System.Text.Json;
 
 namespace backend.Services;
 
+public static class Permissions
+{
+    public static string All = "*";
+    public static string User = "user:*";
+    public static string UserRead = "user:read";
+    public static string UserWrite = "user:write";
+    public static string Admin = "admin:*";
+    public static string AdminRead = "admin:read";
+    public static string AdminWrite = "admin:write";
+}
+
 public readonly record struct SessionData(
     int Id,
     UserRole Role,
-    DateTime CreatedAt
+    HashSet<string> Access,
+    DateTime CreatedAt,
+    bool PendingTwoFactor
 );
 
 public class SessionService
@@ -23,9 +36,10 @@ public class SessionService
         _setting = setting;
     }
 
-    public async Task<(string, int)> CreateSessionAsync(UserTable user)
+    public async Task<(string, int)> CreateSessionAsync(UserTable user, HashSet<string>? access = null, int? expireHours = null, bool pendingTwoFactor = false)
     {
-        var hours = await _setting.Get<int>(SettingKeys.Site.Security.Cookie.ExpireHours);
+        if (access == null) access = [Permissions.All];
+        var hours = expireHours.HasValue ? expireHours.Value : await _setting.Get<int>(SettingKeys.Site.Security.Cookie.ExpireHours);
         var token = Utils.GenerateRandomSecret(64);
         var key = $"{SessionPrefix}{token}";
 
@@ -33,6 +47,8 @@ public class SessionService
         {
             Id = user.Id,
             Role = user.Role,
+            Access = access,
+            PendingTwoFactor = pendingTwoFactor,
             CreatedAt = DateTime.UtcNow
         };
 

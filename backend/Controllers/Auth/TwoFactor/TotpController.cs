@@ -1,4 +1,5 @@
-﻿using backend.Services;
+﻿using backend.Filters;
+using backend.Services;
 using backend.Tables;
 using backend.Types.Response;
 using Microsoft.AspNetCore.Mvc;
@@ -17,10 +18,14 @@ public readonly record struct TotpSetupResponse(string Secret, string Url);
 [Route("auth/two-factor/totp")]
 public class TotpController : BaseApiController
 {
+    private readonly TwoFactorManager _twoFactor;
     private const string ISSUER = "SecretBase";
     private const string PREFIX = "totp_setup";
 
-    public TotpController(BaseServices deps) : base(deps) { }
+    public TotpController(BaseServices deps, TwoFactorManager twoFactor) : base(deps)
+    {
+        _twoFactor = twoFactor;
+    }
 
 
     [HttpPost("setup")]
@@ -111,7 +116,7 @@ public class TotpController : BaseApiController
 
         if (!isValid) return BadRequest(new MessageResponse { Message = "Invalid verification code" });
 
-        await RefreshTokenAsync(user);
+        await _twoFactor.GrantGracePeriodAsync(user.Id, Request.Cookies[Constants.AUTH_TOKEN_COOKIE_NAME]!);
         return Ok(new { message = "TOTP verified" });
     }
 }

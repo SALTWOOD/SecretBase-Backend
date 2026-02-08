@@ -7,35 +7,41 @@ namespace backend.Services;
 
 public class SettingService(ISqlSugarClient db)
 {
-    private static readonly ConcurrentDictionary<string, object?> _cache = new();
+    private static readonly ConcurrentDictionary<string, SettingTable?> _cache = new();
 
     public async ValueTask<T?> Get<T>(string key)
     {
-        if (_cache.TryGetValue(key, out var cachedValue))
-            return (T?)cachedValue;
+        if (_cache.TryGetValue(key, out var cached))
+        {
+            if (cached == null || cached.Type == SettingType.Null) return default;
+            return cached.GetValue<T>();
+        }
 
         var setting = await db.Queryable<SettingTable>()
             .Where(it => it.Key == key)
             .FirstAsync();
 
-        var value = setting == null ? default : setting.GetValue<T>();
+        if (setting == null)
+        {
+            var nullSetting = new SettingTable { Key = key, Type = SettingType.Null, Value = null };
+            _cache[key] = nullSetting;
+            return default;
+        }
 
-        _cache[key] = value;
-
-        return value;
+        _cache[key] = setting;
+        return setting.GetValue<T>();
     }
 
-    public async Task Set<T>(string key, T value)
+    public async Task Set<T>(string key, T? value)
     {
-        await db.Storageable(new SettingTable
-        {
-            Key = key,
-            Value = JsonSerializer.Serialize(value)
-        })
-        .DefaultAddElseUpdate()
-        .ExecuteCommandAsync();
+        var setting = new SettingTable { Key = key };
+        setting.SetValue(value!);
 
-        _cache[key] = value;
+        await db.Storageable(setting)
+            .DefaultAddElseUpdate()
+            .ExecuteCommandAsync();
+
+        _cache[key] = setting;
     }
 
     public async Task<bool> Exists(string key)

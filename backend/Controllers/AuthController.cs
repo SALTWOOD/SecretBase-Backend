@@ -9,8 +9,24 @@ using Microsoft.AspNetCore.Mvc;
 namespace backend.Controllers;
 
 [Route("auth")]
-public class AuthController(BaseServices deps) : BaseApiController(deps)
+public class AuthController(BaseServices deps, TwoFactorManager twoFactor) : BaseApiController(deps)
 {
+    protected async ValueTask<int> IssuePendingToken(UserTable user)
+    {
+        (string token, int hours) = await _session.CreateSessionAsync(user, [], 1, true);
+
+        Response.Cookies.Append(Constants.AUTH_TOKEN_COOKIE_NAME, token, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Lax,
+            Expires = DateTimeOffset.UtcNow.AddHours(hours),
+            Path = "/"
+        });
+
+        return hours;
+    }
+
     [HttpPost("login")]
     [ValidateCaptcha]
     [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]

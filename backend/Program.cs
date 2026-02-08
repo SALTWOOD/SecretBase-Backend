@@ -51,11 +51,13 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer
 #endregion
 
 #region Business Services
+builder.Services.AddSingleton<TwoFactorManager>();
 builder.Services.AddScoped<ICapValidateService, CapValidateService>();
 builder.Services.AddScoped<SessionService>();
 builder.Services.AddScoped<SettingService>();
 builder.Services.AddScoped<BaseServices>();
 builder.Services.AddScoped<WebAuthnService>();
+builder.Services.AddScoped<TwoFactorFilter>();
 builder.Services.AddFido2(options =>
 {
     options.ServerDomain = builder.Configuration["WebAuthn:ServerDomain"] ?? "localhost";

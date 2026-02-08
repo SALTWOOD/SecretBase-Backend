@@ -20,13 +20,15 @@ public class WebAuthnController : BaseApiController
 {
     private readonly WebAuthnService _service;
     private readonly IFido2 _fido2;
+    private readonly TwoFactorManager _twoFactor;
     private const string REG_PREFIX = "webauthn:reg";
     private const string LOGIN_PREFIX = "webauthn:login";
 
-    public WebAuthnController(BaseServices deps, WebAuthnService service, IFido2 fido2) : base(deps)
+    public WebAuthnController(BaseServices deps, WebAuthnService service, IFido2 fido2, TwoFactorManager twoFactor) : base(deps)
     {
         _service = service;
         _fido2 = fido2;
+        _twoFactor = twoFactor;
     }
 
     [HttpPost("register/options")]
@@ -94,10 +96,10 @@ public class WebAuthnController : BaseApiController
         credential.SignatureCounter = result.SignCount;
         await _db.Updateable(credential).ExecuteCommandAsync();
 
-        var token = await RefreshTokenAsync(await _db.Queryable<UserTable>().FirstAsync(it => it.Id == credential.UserId));
-
+        var user = await _db.Queryable<UserTable>().FirstAsync(it => it.Id == credential.UserId);
+        await _twoFactor.GrantGracePeriodAsync(user.Id, Request.Cookies[Constants.AUTH_TOKEN_COOKIE_NAME]!);
         await _redis.KeyDeleteAsync(cacheKey);
-        return Ok(new { token });
+        return Ok();
     }
 
     [HttpPost("login/options")]

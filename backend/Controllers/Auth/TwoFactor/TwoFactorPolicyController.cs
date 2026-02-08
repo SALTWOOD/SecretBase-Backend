@@ -1,4 +1,5 @@
-﻿using backend.Services;
+﻿using backend.Filters;
+using backend.Services;
 using backend.Tables;
 using backend.Types.Response;
 using Microsoft.AspNetCore.Mvc;
@@ -64,6 +65,7 @@ public class TwoFactorPolicyController : BaseApiController
         });
     }
 
+    [Require2FA]
     [HttpPost("disable")]
     public async Task<IActionResult> DisableForce2Fa()
     {
