@@ -18,15 +18,13 @@ public class BaseApiController(BaseServices deps) : ControllerBase
     protected readonly SessionService _session = deps.Session;
     protected readonly SettingService _setting = deps.Setting;
 
-    protected int CurrentUserId =>
-        int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-        ?? throw new UnauthorizedAccessException("Invalid user identity."));
+    protected int? CurrentUserId => int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int result) ? result : null;
 
-    protected Task<UserTable> CurrentUser => _db.Queryable<UserTable>().FirstAsync(it => it.Id == CurrentUserId);
+    protected Task<UserTable> CurrentUser => _db.Queryable<UserTable>().FirstAsync(it => it.Id == CurrentUserId).ThrowIfNull();
 
     protected async ValueTask<int> RefreshTokenAsync(UserTable user)
     {
-        (string token, int hours) = await _session.CreateSessionAsync(user);
+        (string token, int hours) = await _session.CreateSessionAsync(user, [Permissions.All]);
 
         Response.Cookies.Append(Constants.AUTH_TOKEN_COOKIE_NAME, token, new CookieOptions
         {

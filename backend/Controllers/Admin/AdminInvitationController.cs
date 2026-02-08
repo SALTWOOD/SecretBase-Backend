@@ -49,7 +49,7 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
             Code = Utils.GenerateSecureCode(),
             CreatedAt = createdAt,
             ExpireAt = request.HoursValid > 0 ? createdAt.AddHours(request.HoursValid) : null,
-            CreatorId = CurrentUserId,
+            CreatorId = CurrentUserId.ThrowIfNull(),
         };
 
         int id = await _db.Insertable(invite).ExecuteReturnIdentityAsync();

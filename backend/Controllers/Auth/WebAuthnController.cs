@@ -58,18 +58,18 @@ public class WebAuthnController : BaseApiController
         if (value.IsNullOrEmpty) return BadRequest(new MessageResponse { Message = "Challenge not found" });
 
         var options = CredentialCreateOptions.FromJson(value!);
-        await _service.VerifyAndAddCredentialAsync(response, options!, CurrentUserId);
+        await _service.VerifyAndAddCredentialAsync(response, options!, CurrentUserId.ThrowIfNull());
 
         await _redis.KeyDeleteAsync(cacheKey);
         return Ok();
     }
 
     [HttpPost("login/verify")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> VerifyLogin([FromBody] AuthenticatorAssertionRawResponse response)
+    public async Task<IActionResult> VerifyLogin([FromBody] AuthenticatorAssertionRawResponse response, [FromQuery] bool isLogin = false)
     {
-        using JsonDocument doc = JsonDocument.Parse(response.Response.ClientDataJson) ;
+        using JsonDocument doc = JsonDocument.Parse(response.Response.ClientDataJson);
         var challenge = doc.RootElement.GetProperty("challenge").GetString();
 
         var cacheKey = $"{LOGIN_PREFIX}:{challenge}";
@@ -95,18 +95,34 @@ public class WebAuthnController : BaseApiController
 
         credential.SignatureCounter = result.SignCount;
         await _db.Updateable(credential).ExecuteCommandAsync();
-
         var user = await _db.Queryable<UserTable>().FirstAsync(it => it.Id == credential.UserId);
-        await _twoFactor.GrantGracePeriodAsync(user.Id, Request.Cookies[Constants.AUTH_TOKEN_COOKIE_NAME]!);
-        await _redis.KeyDeleteAsync(cacheKey);
-        return Ok();
+
+        if (!isLogin)
+        {
+            await _twoFactor.GrantGracePeriodAsync(user.Id, Request.Cookies[Constants.AUTH_TOKEN_COOKIE_NAME]!);
+            await _redis.KeyDeleteAsync(cacheKey);
+            return NoContent();
+        }
+        else
+        {
+            int expires = await RefreshTokenAsync(user);
+            var autoRenew = await _setting.Get<bool>(SettingKeys.Site.Security.Cookie.AutoRenew);
+
+            return Ok(new AuthResponse
+            {
+                Message = "Login successful.",
+                User = user,
+                Expires = autoRenew ? DateTime.UtcNow.AddHours(expires) : null
+            });
+        }
     }
 
     [HttpPost("login/options")]
     [ProducesResponseType<AssertionOptions>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetLoginOptions()
     {
-        var credentials = await _service.GetUserCredentialsAsync(CurrentUserId);
+        int? id = CurrentUserId;
+        var credentials = id.HasValue ? await _service.GetUserCredentialsAsync(id.Value) : [];
         var existingKeys = credentials.Select(c => new PublicKeyCredentialDescriptor(c.CredentialId)).ToList();
 
         var options = _fido2.GetAssertionOptions(new GetAssertionOptionsParams
@@ -124,13 +140,13 @@ public class WebAuthnController : BaseApiController
     [HttpGet("credentials")]
     [ProducesResponseType<List<UserCredentialTable>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> ListCredentials()
-        => Ok(await _service.GetUserCredentialsAsync(CurrentUserId));
+        => Ok(await _service.GetUserCredentialsAsync(CurrentUserId.ThrowIfNull()));
 
     [HttpDelete("credentials/{id:int}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> DeleteCredential(int id)
     {
-        var success = await _service.DeleteCredentialAsync(id, CurrentUserId);
+        var success = await _service.DeleteCredentialAsync(id, CurrentUserId.ThrowIfNull());
         return success ? Ok() : BadRequest();
     }
 
@@ -140,7 +156,7 @@ public class WebAuthnController : BaseApiController
     {
         if (model.Nickname != null)
         {
-            await _service.UpdateDeviceNicknameAsync(id, CurrentUserId, model.Nickname);
+            await _service.UpdateDeviceNicknameAsync(id, CurrentUserId.ThrowIfNull(), model.Nickname);
         }
         return NoContent();
     }

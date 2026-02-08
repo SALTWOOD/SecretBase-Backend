@@ -20,8 +20,7 @@ public readonly record struct SessionData(
     int Id,
     UserRole Role,
     HashSet<string> Access,
-    DateTime CreatedAt,
-    bool PendingTwoFactor
+    DateTime CreatedAt
 );
 
 public class SessionService
@@ -36,7 +35,7 @@ public class SessionService
         _setting = setting;
     }
 
-    public async Task<(string, int)> CreateSessionAsync(UserTable user, HashSet<string>? access = null, int? expireHours = null, bool pendingTwoFactor = false)
+    public async Task<(string, int)> CreateSessionAsync(UserTable user, HashSet<string>? access = null, int? expireHours = null)
     {
         if (access == null) access = [Permissions.All];
         var hours = expireHours.HasValue ? expireHours.Value : await _setting.Get<int>(SettingKeys.Site.Security.Cookie.ExpireHours);
@@ -48,7 +47,6 @@ public class SessionService
             Id = user.Id,
             Role = user.Role,
             Access = access,
-            PendingTwoFactor = pendingTwoFactor,
             CreatedAt = DateTime.UtcNow
         };
 
