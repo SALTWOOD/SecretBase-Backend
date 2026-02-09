@@ -1,5 +1,6 @@
 using backend;
 using backend.Filters;
+using backend.OAuth;
 using backend.Services;
 using backend.Tables;
 using Microsoft.AspNetCore.Authentication;
@@ -97,6 +98,36 @@ builder.Services.AddRateLimiter(options =>
 });
 #endregion
 
+#region OAuth
+builder.Services.AddOpenIddict()
+    .AddCore(options =>
+    {
+        options.SetDefaultApplicationEntity<OpenIddictSqlSugarApplication>();
+        options.SetDefaultAuthorizationEntity<OpenIddictSqlSugarAuthorization>();
+        options.SetDefaultScopeEntity<OpenIddictSqlSugarScope>();
+        options.SetDefaultTokenEntity<OpenIddictSqlSugarToken>();
+
+        options.ReplaceApplicationStore<OpenIddictSqlSugarApplication, SqlSugarApplicationStore>();
+        options.ReplaceAuthorizationStore<OpenIddictSqlSugarAuthorization, SqlSugarAuthorizationStore>();
+        options.ReplaceTokenStore<OpenIddictSqlSugarToken, SqlSugarTokenStore>();
+        options.ReplaceScopeStore<OpenIddictSqlSugarScope, SqlSugarScopeStore>();
+    })
+    .AddServer(options =>
+    {
+        options.SetAuthorizationEndpointUris("/connect/authorize")
+               .SetTokenEndpointUris("/connect/token");
+
+        options.AllowAuthorizationCodeFlow();
+
+        options.AddDevelopmentEncryptionCertificate()
+               .AddDevelopmentSigningCertificate();
+
+        options.UseAspNetCore()
+               .EnableTokenEndpointPassthrough()
+               .EnableAuthorizationEndpointPassthrough();
+    });
+#endregion
+
 var app = builder.Build();
 
 #region Middleware Pipeline
@@ -121,7 +152,11 @@ using (var scope = app.Services.CreateScope())
         typeof(UserTable),
         typeof(InviteTable),
         typeof(SettingTable),
-        typeof(UserCredentialTable)
+        typeof(UserCredentialTable),
+        typeof(OpenIddictSqlSugarApplication),
+        typeof(OpenIddictSqlSugarAuthorization),
+        typeof(OpenIddictSqlSugarToken),
+        typeof(OpenIddictSqlSugarScope)
     );
     await DatabaseInitializer.InitializeAsync(db, setting);
 }

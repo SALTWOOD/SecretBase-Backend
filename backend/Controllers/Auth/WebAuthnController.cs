@@ -76,7 +76,6 @@ public class WebAuthnController : BaseApiController
 
         var json = await _redis.StringGetAsync(cacheKey);
         if (json.IsNullOrEmpty) return BadRequest(new MessageResponse { Message = "Challenge expired or invalid" });
-        Console.WriteLine("Cached Options JSON: " + json);
 
         var options = AssertionOptions.FromJson(json!);
 
