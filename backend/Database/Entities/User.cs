@@ -1,12 +1,9 @@
-﻿using SqlSugar;
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 
-namespace backend.Tables;
+namespace backend.Database.Entities;
 
-[SugarTable("users")]
-public class UserTable
+public class User
 {
-    [SugarColumn(IsPrimaryKey = true, IsIdentity = true)]
     public int Id { get; set; }
 
     public string Username { get; set; } = string.Empty;
@@ -20,32 +17,27 @@ public class UserTable
 
     public bool IsBanned { get; set; } = false;
 
-    [SugarColumn(ColumnDataType = "timestamptz")]
-    public DateTime RegisterTime { get; set; } = DateTime.Now;
+    // PG 推荐使用 UTC 时间
+    public DateTime RegisterTime { get; set; } = DateTime.UtcNow;
 
     public string Avatar { get; set; } = string.Empty;
 
     [JsonIgnore]
-    [SugarColumn(IsJson = true, IsNullable = true)]
     public LastLogin? LastLoginInfo { get; set; }
 
-    [SugarColumn(IsNullable = true)]
     public int? UsedInviteId { get; set; }
 
     [JsonIgnore]
-    [SugarColumn(IsNullable = true)]
     public string? TotpSecret { get; set; }
 
     [JsonIgnore]
-    [SugarColumn(IsNullable = true, ColumnDataType = "text[]", IsArray = true)]
     public string[]? TotpRecoveryCodes { get; set; }
 
     [JsonIgnore]
     public bool ForceTwoFactor { get; set; }
 
     [JsonIgnore]
-    [Navigate(NavigateType.OneToMany, nameof(InviteTable.CreatorId))]
-    public List<InviteTable>? MyIssuedInvites { get; set; }
+    public List<Invite> MyIssuedInvites { get; set; } = new();
 }
 
 public class LastLogin

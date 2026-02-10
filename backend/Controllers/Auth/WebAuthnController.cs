@@ -1,10 +1,12 @@
-﻿using backend.Services;
-using backend.Tables;
+﻿using backend.Database;
+using backend.Database.Entities;
+using backend.Services;
 using backend.Types.Response;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using System.Text;
 using System.Text.Json;
 
@@ -93,8 +95,9 @@ public class WebAuthnController : BaseApiController
         });
 
         credential.SignatureCounter = result.SignCount;
-        await _db.Updateable(credential).ExecuteCommandAsync();
-        var user = await _db.Queryable<UserTable>().FirstAsync(it => it.Id == credential.UserId);
+        _db.UserCredentials.Update(credential);
+        await _db.SaveChangesAsync();
+        var user = await _db.Users.FirstAsync(it => it.Id == credential.UserId);
 
         if (!isLogin)
         {
@@ -105,13 +108,14 @@ public class WebAuthnController : BaseApiController
         else
         {
             int expires = await RefreshTokenAsync(user);
-            var autoRenew = await _setting.Get<bool>(SettingKeys.Site.Security.Cookie.AutoRenew);
+            var autoRenew = await _setting.Get<bool>("site.security.cookie.auto_renew");
+            var expiresValue = autoRenew ? DateTime.UtcNow.AddHours(expires) : (DateTime?)null;
 
             return Ok(new AuthResponse
             {
                 Message = "Login successful.",
                 User = user,
-                Expires = autoRenew ? DateTime.UtcNow.AddHours(expires) : null
+                Expires = expiresValue
             });
         }
     }
@@ -137,7 +141,7 @@ public class WebAuthnController : BaseApiController
     }
 
     [HttpGet("credentials")]
-    [ProducesResponseType<List<UserCredentialTable>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<List<UserCredential>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> ListCredentials()
         => Ok(await _service.GetUserCredentialsAsync(CurrentUserId.ThrowIfNull()));
 

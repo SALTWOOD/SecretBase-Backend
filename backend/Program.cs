@@ -1,12 +1,14 @@
 using backend;
+using backend.Controllers;
+using backend.Database;
+using backend.Database.Entities;
 using backend.Filters;
-using backend.OAuth;
 using backend.Services;
-using backend.Tables;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
-using SqlSugar;
+using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
+using System;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,27 +23,18 @@ builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
 #endregion
 
-#region Database (SqlSugar)
+#region Database (EF Core with PostgreSQL)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-StaticConfig.AppContext_ConvertInfinityDateTime = true;
-builder.Services.AddScoped<ISqlSugarClient>(_ => new SqlSugarClient(new ConnectionConfig
+
+builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    ConnectionString = connectionString,
-    DbType = DbType.PostgreSQL,
-    IsAutoCloseConnection = true,
-    InitKeyType = InitKeyType.Attribute
-}, db =>
-{
-    db.Aop.DataExecuting = (value, entity) =>
-    {
-        if (value is DateTime dt)
-        {
-            entity.SetValue(dt.Kind == DateTimeKind.Unspecified
-                ? DateTime.SpecifyKind(dt, DateTimeKind.Utc)
-                : dt.ToUniversalTime());
-        }
-    };
-}));
+    // 配置 PostgreSQL
+    options.UseNpgsql(connectionString);
+
+    // 注册 OpenIddict 实体
+    options.UseOpenIddict();
+});
+
 #endregion
 
 #region Redis (Dragonfly)
@@ -98,19 +91,12 @@ builder.Services.AddRateLimiter(options =>
 });
 #endregion
 
-#region OAuth
+#region OAuth (OpenIddict with EF Core)
 builder.Services.AddOpenIddict()
     .AddCore(options =>
     {
-        options.SetDefaultApplicationEntity<OpenIddictSqlSugarApplication>();
-        options.SetDefaultAuthorizationEntity<OpenIddictSqlSugarAuthorization>();
-        options.SetDefaultScopeEntity<OpenIddictSqlSugarScope>();
-        options.SetDefaultTokenEntity<OpenIddictSqlSugarToken>();
-
-        options.ReplaceApplicationStore<OpenIddictSqlSugarApplication, SqlSugarApplicationStore>();
-        options.ReplaceAuthorizationStore<OpenIddictSqlSugarAuthorization, SqlSugarAuthorizationStore>();
-        options.ReplaceTokenStore<OpenIddictSqlSugarToken, SqlSugarTokenStore>();
-        options.ReplaceScopeStore<OpenIddictSqlSugarScope, SqlSugarScopeStore>();
+        options.UseEntityFrameworkCore()
+               .UseDbContext<AppDbContext>();
     })
     .AddServer(options =>
     {
@@ -146,19 +132,10 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    var db = services.GetRequiredService<ISqlSugarClient>();
+    var context = services.GetRequiredService<AppDbContext>();
     var setting = services.GetRequiredService<SettingService>();
-    db.CodeFirst.InitTables(
-        typeof(UserTable),
-        typeof(InviteTable),
-        typeof(SettingTable),
-        typeof(UserCredentialTable),
-        typeof(OpenIddictSqlSugarApplication),
-        typeof(OpenIddictSqlSugarAuthorization),
-        typeof(OpenIddictSqlSugarToken),
-        typeof(OpenIddictSqlSugarScope)
-    );
-    await DatabaseInitializer.InitializeAsync(db, setting);
+
+    await DatabaseInitializer.InitializeAsync(context, setting);
 }
 #endregion
 

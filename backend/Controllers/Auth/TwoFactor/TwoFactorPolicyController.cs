@@ -1,8 +1,10 @@
-﻿using backend.Filters;
+﻿using backend.Database;
+using backend.Database.Entities;
+using backend.Filters;
 using backend.Services;
-using backend.Tables;
 using backend.Types.Response;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using OtpNet;
 using System.Security.Cryptography;
 using System.Text;
@@ -41,7 +43,7 @@ public class TwoFactorPolicyController : BaseApiController
         var user = await CurrentUser;
 
         bool is2faReady = !string.IsNullOrEmpty(user.TotpSecret);
-        if (!is2faReady) is2faReady = await _db.Queryable<UserCredentialTable>().AnyAsync(it => it.UserId == user.Id);
+        if (!is2faReady) is2faReady = await _db.UserCredentials.AnyAsync(it => it.UserId == user.Id);
 
         if (!is2faReady) return BadRequest(new MessageResponse { Message = "Please set up at least one 2FA method..." });
 
@@ -54,9 +56,7 @@ public class TwoFactorPolicyController : BaseApiController
         user.ForceTwoFactor = true;
         user.TotpRecoveryCodes = hashedCodes;
 
-        await _db.Updateable(user)
-            .UpdateColumns(it => new { it.ForceTwoFactor, it.TotpRecoveryCodes })
-            .ExecuteCommandAsync();
+        await _db.SaveChangesAsync();
 
         return Ok(new
         {
@@ -79,9 +79,7 @@ public class TwoFactorPolicyController : BaseApiController
         user.ForceTwoFactor = false;
         user.TotpRecoveryCodes = null;
 
-        await _db.Updateable(user)
-            .UpdateColumns(it => new { it.ForceTwoFactor, it.TotpRecoveryCodes })
-            .ExecuteCommandAsync();
+        await _db.SaveChangesAsync();
 
         return Ok(new MessageResponse { Message = "Two-factor enforcement has been disabled" });
     }

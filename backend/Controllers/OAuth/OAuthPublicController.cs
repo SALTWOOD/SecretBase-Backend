@@ -22,8 +22,7 @@ public class OAuthPublicController : ControllerBase
     [ProducesResponseType<MessageResponse>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAppInfo(string clientId)
     {
-        // 1. 使用 Manager 查询应用实体
-        // 注意：这里使用的是你之前定义的 OpenIddictSqlSugarApplication 实体
+        // 使用 Manager 查询应用实体
         var application = await _applicationManager.FindByClientIdAsync(clientId);
 
         if (application == null)
@@ -32,13 +31,12 @@ public class OAuthPublicController : ControllerBase
             return NotFound(new MessageResponse { Message = "Application not found" });
         }
 
-        // 2. 映射为 DTO 返回给前端
-        // 只暴露安全的公开字段，绝对不要暴露 ClientSecret 喵！
+        // 映射为 DTO 返回给前端
+        // 只暴露安全的公开字段，绝对不要暴露 ClientSecret！
         var response = new OAuthAppResponse
         {
             ClientId = (await _applicationManager.GetClientIdAsync(application)).ThrowIfNull(),
             DisplayName = (await _applicationManager.GetDisplayNameAsync(application)).ThrowIfNull(),
-            // 如果你扩展了图标字段，也可以在这里返回
         };
 
         return Ok(response);

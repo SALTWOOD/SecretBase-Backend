@@ -1,4 +1,4 @@
-﻿namespace backend.Tables;
+﻿namespace backend.Database.Entities;
 
 public enum UserRole
 {

@@ -1,11 +1,11 @@
-﻿using backend.Services;
-using backend.Tables;
+﻿using backend.Database;
+using backend.Database.Entities;
+using backend.Services;
 using backend.Types.Response;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using SqlSugar;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using static backend.Tables.SettingKeys.Site;
 
 namespace backend.Filters;
 
@@ -18,9 +18,9 @@ public class Require2FAAttribute : ServiceFilterAttribute
 public class TwoFactorFilter : IAsyncActionFilter
 {
     private readonly TwoFactorManager _tfManager;
-    private readonly ISqlSugarClient _db;
+    private readonly AppDbContext _db;
 
-    public TwoFactorFilter(TwoFactorManager tfManager, ISqlSugarClient db)
+    public TwoFactorFilter(TwoFactorManager tfManager, AppDbContext db)
     {
         _tfManager = tfManager;
         _db = db;
@@ -31,7 +31,9 @@ public class TwoFactorFilter : IAsyncActionFilter
         var httpContext = context.HttpContext;
         int id = int.Parse(httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
         ?? throw new UnauthorizedAccessException("Invalid user identity."));
-        var user = await _db.Queryable<UserTable>().FirstAsync(it => it.Id == id);
+        var user = await _db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(it => it.Id == id);
 
         if (user != null && user.ForceTwoFactor)
         {

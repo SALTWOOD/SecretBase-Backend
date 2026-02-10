@@ -1,5 +1,6 @@
-﻿using backend.Tables;
-using SqlSugar;
+﻿using backend.Database;
+using backend.Database.Entities;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 
 namespace backend;
@@ -20,19 +21,21 @@ public static class Utils
         return string.Join("-", Enumerable.Range(0, 4).Select(i => result.Substring(i * 5, 5)));
     }
 
-    public static async Task<InviteTable?> GetInvite(ISqlSugarClient db, string? code, bool doIncrement = true)
+    public static async Task<Invite?> GetInvite(AppDbContext db, string? code, bool doIncrement = true)
     {
         if (string.IsNullOrEmpty(code)) return null;
-        InviteTable invite = await db.Queryable<InviteTable>()
-            .FirstAsync(it =>
-                it.Code == code
-            );
+        Invite? invite = await db.Invites
+            .AsNoTracking()
+            .FirstOrDefaultAsync(it => it.Code == code);
+        
         if (doIncrement && invite != null && invite.IsValid)
         {
-            await db.Updateable<InviteTable>()
-                .Where(it => it.Id == invite.Id)
-                .SetColumns(it => it.UsedCount == it.UsedCount + 1)
-                .ExecuteCommandAsync();
+            var dbInvite = await db.Invites.FindAsync(invite.Id);
+            if (dbInvite != null)
+            {
+                dbInvite.UsedCount++;
+                await db.SaveChangesAsync();
+            }
         }
         return invite;
     }

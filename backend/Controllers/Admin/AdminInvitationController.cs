@@ -1,8 +1,9 @@
-﻿using backend.Services;
-using backend.Tables;
+﻿using backend.Database;
+using backend.Database.Entities;
+using backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SqlSugar;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 
 namespace backend.Controllers.Admin;
@@ -16,18 +17,22 @@ public record UpdateInvitationRequest(bool? IsDisabled, int? Uses, int? HoursVal
 public class InvitationAdminController(BaseServices deps) : BaseApiController(deps)
 {
     [HttpGet]
-    [ProducesResponseType<List<InviteTable>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<List<Invite>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetInvitations([FromQuery] int page = 1, [FromQuery] int size = 20)
     {
         if (page < 1) page = 1;
         if (size > 100) size = 100;
 
-        RefAsync<int> totalCount = 0;
+        int totalCount = 0;
 
-        var invites = await _db.Queryable<InviteTable>()
-            .Includes(i => i.Creator)
+        var invites = await _db.Invites
+            .Include(i => i.Creator)
             .OrderByDescending(it => it.Id)
-            .ToPageListAsync(page, size, totalCount);
+            .Skip((page - 1) * size)
+            .Take(size)
+            .ToListAsync();
+
+        totalCount = invites.Count;
 
         Response.Headers.Append("X-Total-Count", totalCount.ToString());
 
@@ -38,12 +43,12 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
     /// Generate new invitation codes
     /// </summary>
     [HttpPost]
-    [ProducesResponseType<InviteTable>(StatusCodes.Status201Created)]
+    [ProducesResponseType<Invite>(StatusCodes.Status201Created)]
     public async Task<IActionResult> CreateInvitations([FromBody] CreateInvitationRequest request)
     {
         DateTime createdAt = DateTime.UtcNow;
 
-        InviteTable invite = new InviteTable
+        Invite invite = new Invite
         {
             MaxUses = request.Uses,
             Code = Utils.GenerateSecureCode(),
@@ -52,19 +57,19 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
             CreatorId = CurrentUserId.ThrowIfNull(),
         };
 
-        int id = await _db.Insertable(invite).ExecuteReturnIdentityAsync();
-        invite.Id = id;
+        await _db.Invites.AddAsync(invite);
+        await _db.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetInvitation), new { id }, invite);
+        return CreatedAtAction(nameof(GetInvitation), new { id = invite.Id }, invite);
     }
 
     [HttpGet("{id:int}")]
-    [ProducesResponseType<InviteTable>(StatusCodes.Status200OK)]
+    [ProducesResponseType<Invite>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetInvitation(int id)
     {
-        var invite = await _db.Queryable<InviteTable>()
-            .Includes(i => i.Creator)
-            .InSingleAsync(id);
+        var invite = await _db.Invites
+            .Include(i => i.Creator)
+            .FirstOrDefaultAsync(i => i.Id == id);
         if (invite == null)
             return NotFound(new { message = $"Invitation with ID {id} not found" });
         return Ok(invite);
@@ -75,7 +80,7 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateInvitation(int id, [FromBody] UpdateInvitationRequest request)
     {
-        var invite = await _db.Queryable<InviteTable>().InSingleAsync(id);
+        var invite = await _db.Invites.FindAsync(id);
         if (invite == null)
             return NotFound(new { message = $"Invitation with ID {id} not found" });
 
@@ -104,12 +109,7 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
         if (!changed)
             return NoContent();
 
-        var result = await _db.Updateable(invite)
-            .UpdateColumns(it => new { it.MaxUses, it.ExpireAt })
-            .ExecuteCommandAsync();
-
-        if (result == 0)
-            return NotFound(new { message = $"Invitation with ID {id} not found" });
+        await _db.SaveChangesAsync();
 
         return NoContent();
     }
@@ -119,26 +119,31 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteInvitation(int id)
     {
-        var result = await _db.Deleteable<InviteTable>()
-            .Where(i => i.Id == id)
-            .ExecuteCommandAsync();
-        if (result == 0)
+        var invite = await _db.Invites.FindAsync(id);
+        if (invite == null)
             return NotFound();
+
+        _db.Invites.Remove(invite);
+        await _db.SaveChangesAsync();
         return NoContent();
     }
 
     [HttpGet("{id:int}/users")]
-    [ProducesResponseType<List<UserTable>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<List<User>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetInvitationUsers(int id, [FromQuery] int page = 1, [FromQuery] int size = 20)
     {
-        var exists = await _db.Queryable<InviteTable>().AnyAsync(it => it.Id == id);
+        var exists = await _db.Invites.AnyAsync(it => it.Id == id);
         if (!exists) return NotFound();
 
-        RefAsync<int> totalCount = 0;
+        int totalCount = 0;
 
-        var users = await _db.Queryable<UserTable>()
+        var users = await _db.Users
             .Where(u => u.UsedInviteId == id)
-            .ToPageListAsync(page, size, totalCount);
+            .Skip((page - 1) * size)
+            .Take(size)
+            .ToListAsync();
+
+        totalCount = users.Count;
 
         Response.Headers.Append("X-Total-Count", totalCount.ToString());
         return Ok(users);

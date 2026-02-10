@@ -1,7 +1,6 @@
-﻿using SqlSugar;
-using System.Text.Json;
+﻿using System.Text.Json;
 
-namespace backend.Tables;
+namespace backend.Database.Entities;
 
 public enum SettingType
 {
@@ -12,13 +11,10 @@ public enum SettingType
     Null = 4
 }
 
-[SugarTable("settings")]
-public class SettingTable
+public class Setting
 {
-    [SugarColumn(IsPrimaryKey = true)]
     public string Key { get; set; } = string.Empty;
 
-    [SugarColumn(ColumnDataType = "text")]
     public string? Value { get; set; }
 
     public SettingType Type { get; set; } = SettingType.String;

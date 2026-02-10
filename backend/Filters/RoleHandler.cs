@@ -1,4 +1,4 @@
-﻿using backend.Tables;
+﻿using backend.Database.Entities;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 

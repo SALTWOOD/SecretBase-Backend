@@ -1,10 +1,12 @@
-﻿using backend.Filters;
+﻿using backend.Database;
+using backend.Database.Entities;
+using backend.Filters;
 using backend.Services;
-using backend.Tables;
 using backend.Types.Request;
 using backend.Types.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace backend.Controllers;
 
@@ -18,9 +20,9 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Login([FromBody] AuthLoginModel model)
     {
-        // query user
-        UserTable? user = await _db.Queryable<UserTable>()
-            .FirstAsync(u => u.Email == model.Email);
+        // query User
+        User? user = await _db.Users
+            .FirstOrDefaultAsync(u => u.Email == model.Email);
 
         // check for password
         if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
@@ -31,13 +33,14 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
         await UpdateLastLoginAsync(user, HttpContext);
         int expires = await RefreshTokenAsync(user);
 
-        var autoRenew = await _setting.Get<bool>(SettingKeys.Site.Security.Cookie.AutoRenew);
+        var autoRenew = await _setting.Get<bool>("site.security.cookie.auto_renew");
+        DateTime? expiresValue = autoRenew ? DateTime.UtcNow.AddHours(expires) : null;
 
         return Ok(new AuthResponse
         {
             Message = "Login successful.",
             User = user,
-            Expires = autoRenew ? DateTime.UtcNow.AddHours(expires) : null
+            Expires = expiresValue
         });
     }
 
@@ -64,12 +67,12 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
 
     [HttpPost("register")]
     [ValidateCaptcha]
-    [ProducesResponseType(typeof(UserTable), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(User), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Register([FromBody] AuthRegisterModel model, [FromServices] SettingService setting)
     {
-        bool enabled = await setting.Get<bool>(SettingKeys.Site.User.Registration.Enabled);
+        bool enabled = await setting.Get<bool>("site.user.registration.enabled");
         if (!enabled)
             return StatusCode(
                 StatusCodes.Status403Forbidden,
@@ -77,24 +80,24 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
             );
 
 
-        bool forceInvitation = await setting.Get<bool>(SettingKeys.Site.User.Registration.ForceInvitation);
-        InviteTable? invite = await Utils.GetInvite(_db, model.InviteCode);
+        bool forceInvitation = await setting.Get<bool>("site.user.registration.force_invitation");
+        Invite? invite = await Utils.GetInvite(_db, model.InviteCode);
         if (forceInvitation && invite == null)
             return StatusCode(
                 StatusCodes.Status403Forbidden,
                 new MessageResponse("An invitation is required to register.")
             );
 
-        bool emailExists = await _db.Queryable<UserTable>()
+        bool emailExists = await _db.Users
             .AnyAsync(u => u.Email == model.Email);
         if (emailExists) return BadRequest(new MessageResponse("Email is already registered."));
 
-        bool usernameExists = await _db.Queryable<UserTable>()
+        bool usernameExists = await _db.Users
             .AnyAsync(u => u.Username == model.Username);
         if (usernameExists) return BadRequest(new MessageResponse("Username is already taken."));
 
-        // create user
-        UserTable newUser = new UserTable
+        // create User
+        User newUser = new User
         {
             Username = model.Username,
             Email = model.Email,
@@ -105,7 +108,8 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
             Avatar = Constants.DEFAULT_AVATAR_URL,
             UsedInviteId = invite?.Id
         };
-        await _db.Insertable(newUser).ExecuteCommandAsync();
+        await _db.Users.AddAsync(newUser);
+        await _db.SaveChangesAsync();
 
         await UpdateLastLoginAsync(newUser, HttpContext);
         await RefreshTokenAsync(newUser);
@@ -114,14 +118,14 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
 
     [HttpPost("renew")]
     [Authorize]
-    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(TokenRenewResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> RenewToken()
     {
-        var user = await _db.Queryable<UserTable>()
+        var user = await _db.Users
             .Where(u => u.Id == CurrentUserId)
-            .Select(u => new UserTable { Id = u.Id, Username = u.Username, Role = u.Role })
-            .FirstAsync();
+            .Select(u => new User { Id = u.Id, Username = u.Username, Role = u.Role })
+            .FirstOrDefaultAsync();
         if (user == null)
         {
             return Unauthorized(new { message = "User not found." });
@@ -129,11 +133,14 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
 
         await UpdateLastLoginAsync(user, HttpContext);
         int expires = await RefreshTokenAsync(user);
-        return Ok(new
+        var autoRenew = await _setting.Get<bool>("site.security.cookie.auto_renew");
+        DateTime? expiresValue = autoRenew ? DateTime.UtcNow.AddHours(expires) : null;
+
+        return Ok(new TokenRenewResponse
         {
-            message = "Token renewed successfully.",
-            user,
-            expires = DateTime.UtcNow.AddHours(expires)
+            Message = "Token renewed successfully.",
+            User = user,
+            Expires = expiresValue
         });
     }
 }

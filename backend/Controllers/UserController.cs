@@ -1,9 +1,11 @@
-﻿using backend.Filters;
+﻿using backend.Database;
+using backend.Database.Entities;
+using backend.Filters;
 using backend.Services;
-using backend.Tables;
 using backend.Types.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace backend.Controllers;
 
@@ -12,7 +14,7 @@ public class UserController(BaseServices deps) : BaseApiController(deps)
 {
     [Authorize]
     [HttpGet("profile")]
-    [ProducesResponseType(typeof(UserTable), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(User), StatusCodes.Status200OK)]
     public async Task<IActionResult> Profile()
     {
         return Ok(await CurrentUser);
@@ -24,19 +26,20 @@ public class UserController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileModel model)
     {
-        var user = await _db.Queryable<UserTable>().InSingleAsync(CurrentUserId);
+        var user = await _db.Users.FindAsync(CurrentUserId);
+        if (user == null) return BadRequest(new MessageResponse("User not found."));
 
         // check if both old and new passwords are provided or neither
         bool hasNew = !string.IsNullOrWhiteSpace(model.NewPassword);
         bool hasOld = !string.IsNullOrWhiteSpace(model.OldPassword);
 
-        if (hasNew != hasOld) return BadRequest(new MessageResponse("Both old and new passwords must be provided to change the password."));
+        if (hasNew != hasOld) return BadRequest(new MessageResponse("Both old and new passwords must be provided to change password."));
 
         // update username if provided and different
         if (!string.IsNullOrEmpty(model.Username) && model.Username != user.Username)
         {
-            bool usernameExists = await _db.Queryable<UserTable>()
-                .AnyAsync(u => u.Username == model.Username);
+            bool usernameExists = await _db.Users
+                .AnyAsync(u => u.Username == model.Username && u.Id != CurrentUserId);
             if (usernameExists) return BadRequest(new MessageResponse("Username is already taken."));
 
             user.Username = model.Username;
@@ -51,7 +54,7 @@ public class UserController(BaseServices deps) : BaseApiController(deps)
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
         }
 
-        await _db.Updateable(user).ExecuteCommandAsync();
+        await _db.SaveChangesAsync();
         return Ok(new MessageResponse("Profile updated."));
     }
 
@@ -77,10 +80,10 @@ public class UserController(BaseServices deps) : BaseApiController(deps)
         }
         catch { return BadRequest(new MessageResponse("Invalid image file.")); }
 
-        var oldAvatar = await _db.Queryable<UserTable>()
+        var oldAvatar = await _db.Users
             .Where(u => u.Id == CurrentUserId)
             .Select(u => u.Avatar)
-            .FirstAsync();
+            .FirstOrDefaultAsync();
 
         var fileName = $"{CurrentUserId}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}{extension}";
         var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "avatars");
@@ -93,12 +96,14 @@ public class UserController(BaseServices deps) : BaseApiController(deps)
         }
 
         var avatarUrl = $"/uploads/avatars/{fileName}";
-        var success = await _db.Updateable<UserTable>()
-            .SetColumns(u => u.Avatar == avatarUrl)
-            .Where(u => u.Id == CurrentUserId)
-            .ExecuteCommandAsync() > 0;
+        var dbUser = await _db.Users.FindAsync(CurrentUserId);
+        if (dbUser != null)
+        {
+            dbUser.Avatar = avatarUrl;
+            await _db.SaveChangesAsync();
+        }
 
-        if (success && !string.IsNullOrEmpty(oldAvatar) && oldAvatar.StartsWith("/uploads/"))
+        if (!string.IsNullOrEmpty(oldAvatar) && oldAvatar.StartsWith("/uploads/"))
         {
             var oldFilePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", oldAvatar.TrimStart('/'));
             if (System.IO.File.Exists(oldFilePath))

@@ -1,9 +1,11 @@
-﻿using backend.Filters;
+﻿using backend.Database;
+using backend.Database.Entities;
+using backend.Filters;
 using backend.Services;
-using backend.Tables;
 using backend.Types.Response;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.EntityFrameworkCore;
 using OtpNet;
 using System.Security.Cryptography;
 using System.Text;
@@ -75,9 +77,7 @@ public class TotpController : BaseApiController
         {
             user.TotpSecret = tempSecret;
 
-            await _db.Updateable(user)
-                .UpdateColumns(it => new { it.TotpSecret })
-                .ExecuteCommandAsync();
+            await _db.SaveChangesAsync();
 
             await _redis.KeyDeleteAsync($"{PREFIX}:{user.Id}");
 
@@ -94,9 +94,7 @@ public class TotpController : BaseApiController
         var user = await CurrentUser;
         if (user.TotpSecret == null) return BadRequest(new MessageResponse { Message = "TOTP has not been set up yet" });
         user.TotpSecret = null;
-        await _db.Updateable(user)
-            .UpdateColumns(it => new { it.TotpSecret })
-            .ExecuteCommandAsync();
+        await _db.SaveChangesAsync();
         return NoContent();
     }
 
@@ -105,7 +103,7 @@ public class TotpController : BaseApiController
     [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Verify([FromBody] TotpVerifyRequest request)
     {
-        UserTable user = await CurrentUser;
+        User user = await CurrentUser;
         string? savedSecret = user.TotpSecret;
 
         if (string.IsNullOrEmpty(savedSecret)) return BadRequest(new MessageResponse { Message = "TOTP has not been set up" });
@@ -120,4 +118,3 @@ public class TotpController : BaseApiController
         return Ok(new { message = "TOTP verified" });
     }
 }
-

@@ -1,4 +1,5 @@
-﻿using backend.Tables;
+﻿using backend.Controllers;
+using backend.Database.Entities;
 using StackExchange.Redis;
 using System.Security.Claims;
 using System.Text.Json;
@@ -35,7 +36,7 @@ public class SessionService
         _setting = setting;
     }
 
-    public async Task<(string, int)> CreateSessionAsync(UserTable user, HashSet<string>? access = null, int? expireHours = null)
+    public async Task<(string, int)> CreateSessionAsync(User user, HashSet<string>? access = null, int? expireHours = null)
     {
         if (access == null) access = [Permissions.All];
         var hours = expireHours.HasValue ? expireHours.Value : await _setting.Get<int>(SettingKeys.Site.Security.Cookie.ExpireHours);

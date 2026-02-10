@@ -1,7 +1,8 @@
-﻿using backend.Services;
-using backend.Tables;
+﻿using backend.Database;
+using backend.Database.Entities;
+using backend.Services;
 using Microsoft.AspNetCore.Mvc;
-using SqlSugar;
+using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 using System.Net.Mime;
 using System.Security.Claims;
@@ -13,16 +14,16 @@ namespace backend.Controllers;
 [Produces(MediaTypeNames.Application.Json)]
 public class BaseApiController(BaseServices deps) : ControllerBase
 {
-    protected readonly ISqlSugarClient _db = deps.Database;
+    protected readonly AppDbContext _db = deps.Database;
     protected readonly IDatabase _redis = deps.Redis.GetDatabase();
     protected readonly SessionService _session = deps.Session;
     protected readonly SettingService _setting = deps.Setting;
 
     protected int? CurrentUserId => int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int result) ? result : null;
 
-    protected Task<UserTable> CurrentUser => _db.Queryable<UserTable>().FirstAsync(it => it.Id == CurrentUserId).ThrowIfNull();
+    protected Task<User> CurrentUser => _db.Users.FirstAsync(it => it.Id == CurrentUserId);
 
-    protected async ValueTask<int> RefreshTokenAsync(UserTable user)
+    protected async ValueTask<int> RefreshTokenAsync(User user)
     {
         (string token, int hours) = await _session.CreateSessionAsync(user, [Permissions.All]);
 
@@ -38,7 +39,7 @@ public class BaseApiController(BaseServices deps) : ControllerBase
         return hours;
     }
 
-    public async Task UpdateLastLoginAsync(UserTable user, HttpContext context)
+    public async Task UpdateLastLoginAsync(User user, HttpContext context)
     {
         var lastLogin = new LastLogin
         {
@@ -47,9 +48,11 @@ public class BaseApiController(BaseServices deps) : ControllerBase
             UserAgent = context.Request.Headers.UserAgent.ToString()
         };
 
-        await _db.Updateable<UserTable>()
-                .SetColumns(u => u.LastLoginInfo == lastLogin)
-                .Where(u => u.Id == user.Id)
-                .ExecuteCommandAsync();
+        var dbUser = await _db.Users.FindAsync(user.Id);
+        if (dbUser != null)
+        {
+            dbUser.LastLoginInfo = lastLogin;
+            await _db.SaveChangesAsync();
+        }
     }
 }

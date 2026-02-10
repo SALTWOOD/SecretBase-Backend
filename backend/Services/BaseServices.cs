@@ -1,10 +1,10 @@
-﻿using SqlSugar;
+﻿using backend.Database;
 using StackExchange.Redis;
 
 namespace backend.Services;
 
 public record BaseServices(
-    ISqlSugarClient Database,
+    AppDbContext Database,
     IConnectionMultiplexer Redis,
     SessionService Session,
     SettingService Setting

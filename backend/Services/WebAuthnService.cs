@@ -1,16 +1,17 @@
-﻿using backend.Tables;
+﻿using backend.Database;
+using backend.Database.Entities;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
-using SqlSugar;
+using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services;
 
 public class WebAuthnService
 {
     private readonly IFido2 _fido2;
-    private readonly ISqlSugarClient _db;
+    private readonly AppDbContext _db;
 
-    public WebAuthnService(IFido2 fido2, ISqlSugarClient db)
+    public WebAuthnService(IFido2 fido2, AppDbContext db)
     {
         _fido2 = fido2;
         _db = db;
@@ -25,7 +26,8 @@ public class WebAuthnService
             Id = BitConverter.GetBytes(userId)
         };
 
-        var existingKeys = _db.Queryable<UserCredentialTable>()
+        var existingKeys = _db.UserCredentials
+            .AsNoTracking()
             .Where(c => c.UserId == userId)
             .ToList()
             .Select(c => new PublicKeyCredentialDescriptor(c.CredentialId))
@@ -46,7 +48,7 @@ public class WebAuthnService
         });
     }
 
-    public async Task<UserCredentialTable> VerifyAndAddCredentialAsync(
+    public async Task<UserCredential> VerifyAndAddCredentialAsync(
         AuthenticatorAttestationRawResponse attestationResponse,
         CredentialCreateOptions origOptions,
         int userId)
@@ -57,12 +59,12 @@ public class WebAuthnService
             OriginalOptions = origOptions,
             IsCredentialIdUniqueToUserCallback = async (args, ct) =>
             {
-                return !await _db.Queryable<UserCredentialTable>()
+                return !await _db.UserCredentials
                     .AnyAsync(c => c.CredentialId == args.CredentialId && c.UserId == userId);
             }
         });
 
-        var credential = new UserCredentialTable
+        var credential = new UserCredential
         {
             UserId = userId,
             CredentialId = res.Id,
@@ -71,19 +73,22 @@ public class WebAuthnService
             CreatedAt = DateTime.UtcNow
         };
 
-        await _db.Insertable(credential).ExecuteCommandAsync();
+        await _db.UserCredentials.AddAsync(credential);
+        await _db.SaveChangesAsync();
         return credential;
     }
 
-    public async Task<UserCredentialTable?> FindCredentialByIdAsync(byte[] credentialId)
+    public async Task<UserCredential?> FindCredentialByIdAsync(byte[] credentialId)
     {
-        return await _db.Queryable<UserCredentialTable>()
-            .FirstAsync(c => c.CredentialId == credentialId);
+        return await _db.UserCredentials
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.CredentialId == credentialId);
     }
 
-    public async Task<List<UserCredentialTable>> GetUserCredentialsAsync(int userId)
+    public async Task<List<UserCredential>> GetUserCredentialsAsync(int userId)
     {
-        return await _db.Queryable<UserCredentialTable>()
+        return await _db.UserCredentials
+            .AsNoTracking()
             .Where(c => c.UserId == userId)
             .OrderByDescending(c => c.Id)
             .ToListAsync();
@@ -91,16 +96,27 @@ public class WebAuthnService
 
     public async Task<bool> DeleteCredentialAsync(int id, int userId)
     {
-        return await _db.Deleteable<UserCredentialTable>()
-            .Where(c => c.Id == id && c.UserId == userId)
-            .ExecuteCommandHasChangeAsync();
+        var credential = await _db.UserCredentials
+            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
+        
+        if (credential == null)
+            return false;
+
+        _db.UserCredentials.Remove(credential);
+        await _db.SaveChangesAsync();
+        return true;
     }
 
     public async Task<bool> UpdateDeviceNicknameAsync(int id, int userId, string nickname)
     {
-        return await _db.Updateable<UserCredentialTable>()
-            .SetColumns(c => c.Nickname == nickname)
-            .Where(c => c.Id == id && c.UserId == userId)
-            .ExecuteCommandHasChangeAsync();
+        var credential = await _db.UserCredentials
+            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
+        
+        if (credential == null)
+            return false;
+
+        credential.Nickname = nickname;
+        await _db.SaveChangesAsync();
+        return true;
     }
 }

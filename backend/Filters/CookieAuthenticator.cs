@@ -1,24 +1,24 @@
 ﻿namespace backend.Filters;
 
+using backend.Database;
 using backend.Services;
-using backend.Tables;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using SqlSugar;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 
 public class CookieAuthenticator : AuthenticationHandler<AuthenticationSchemeOptions>
 {
     private readonly SessionService _sessionService;
-    private readonly ISqlSugarClient _db;
+    private readonly AppDbContext _db;
 
     public CookieAuthenticator(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
         ILoggerFactory logger,
         UrlEncoder encoder,
         SessionService sessionService,
-        ISqlSugarClient db) : base(options, logger, encoder)
+        AppDbContext db) : base(options, logger, encoder)
     {
         _sessionService = sessionService;
         _db = db;
@@ -37,10 +37,11 @@ public class CookieAuthenticator : AuthenticationHandler<AuthenticationSchemeOpt
         if (idClaim == null || !int.TryParse(idClaim.Value, out var userId))
             return AuthenticateResult.Fail("Invalid session data");
 
-        bool isBanned = await _db.Queryable<UserTable>()
+        bool isBanned = await _db.Users
+            .AsNoTracking()
             .Where(u => u.Id == userId)
             .Select(u => u.IsBanned)
-            .FirstAsync();
+            .FirstOrDefaultAsync();
 
         if (isBanned)
         {

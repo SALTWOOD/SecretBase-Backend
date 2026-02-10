@@ -1,6 +1,4 @@
-﻿using backend.Controllers.OAuth;
-using backend.OAuth;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Abstractions;
 
@@ -31,16 +29,16 @@ public class OAuthAppController : ControllerBase
 
         await foreach (var app in _applicationManager.ListAsync())
         {
-            // 使用模式匹配进行安全转换
-            if (app is OpenIddictSqlSugarApplication sugarApp)
+            var clientId = await _applicationManager.GetClientIdAsync(app);
+            var displayName = await _applicationManager.GetDisplayNameAsync(app);
+            var appId = await _applicationManager.GetIdAsync(app);
+
+            apps.Add(new OAuthAppResponse
             {
-                apps.Add(new OAuthAppResponse
-                {
-                    Id = sugarApp.Id,
-                    ClientId = sugarApp.ClientId ?? string.Empty, // 处理可能的 null
-                    DisplayName = sugarApp.DisplayName ?? string.Empty
-                });
-            }
+                Id = appId ?? string.Empty,
+                ClientId = clientId ?? string.Empty,
+                DisplayName = displayName ?? string.Empty
+            });
         }
 
         return Ok(apps);
