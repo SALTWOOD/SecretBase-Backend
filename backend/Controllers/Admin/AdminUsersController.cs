@@ -1,12 +1,17 @@
 ﻿using backend.Database;
 using backend.Database.Entities;
 using backend.Services;
+using backend.Types.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace backend.Controllers.Admin;
+
+public readonly record struct UpdateUserStatusBody(
+    bool IsBanned
+);
 
 [Authorize(Policy = "AdminOnly")]
 [ApiController]
@@ -38,22 +43,12 @@ public class UserAdminController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateUserStatus(int id, [FromBody] bool isBanned)
+    public async Task<IActionResult> UpdateUserStatus(int id, [FromBody] UpdateUserStatusBody body)
     {
         // 获取当前用户信息
-        var currentUserIdClaim = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier);
-        if (currentUserIdClaim == null || !int.TryParse(currentUserIdClaim.Value, out var currentUserId))
-        {
-            return Unauthorized(new { message = "Invalid user identity" });
-        }
+        var user = await CurrentUser;
 
-        // 获取当前用户的角色
-        var currentUser = await _db.Users
-            .Where(u => u.Id == currentUserId)
-            .Select(u => new { u.Role })
-            .FirstOrDefaultAsync();
-
-        if (currentUser == null)
+        if (user == null)
         {
             return Unauthorized(new { message = "Current user not found" });
         }
@@ -69,16 +64,21 @@ public class UserAdminController(BaseServices deps) : BaseApiController(deps)
             return NotFound(new { message = $"User with ID {id} not found" });
         }
 
-        // 检查权限：只能操作等级低于自己的用户
-        if (targetUser.Role >= currentUser.Role)
+        if (user.Id == targetUser.Id)
         {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Cannot modify users with equal or higher role level" });
+            return BadRequest(new MessageResponse { Message = "Cannot ban yourself!" });
+        }
+
+        // 检查权限：只能操作等级低于自己的用户
+        if (targetUser.Role >= user.Role)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new MessageResponse { Message = "Cannot modify users with equal or higher role level" });
         }
 
         var rowsAffected = await _db.Users
             .Where(u => u.Id == id)
             .ExecuteUpdateAsync(setters => setters
-                .SetProperty(u => u.IsBanned, isBanned)
+                .SetProperty(u => u.IsBanned, body.IsBanned)
             );
 
         if (rowsAffected == 0)

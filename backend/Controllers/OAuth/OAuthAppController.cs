@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Abstractions;
 using System.Text.Json;
+using backend;
 
 namespace backend.Controllers.OAuth;
 
@@ -57,9 +58,9 @@ public class OAuthAppController : ControllerBase
     }
 
     [HttpPost]
-    [ProducesResponseType<OAuthAppResponse>(StatusCodes.Status201Created)]
+    [ProducesResponseType<CreateAppResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<OAuthAppResponse>> Create([FromBody] CreateAppRequest request)
+    public async Task<ActionResult<CreateAppResponse>> Create([FromBody] CreateAppRequest request)
     {
         var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(currentUserId))
@@ -67,10 +68,12 @@ public class OAuthAppController : ControllerBase
             return Unauthorized(new { message = "User not authenticated" });
         }
 
+        var clientSecret = Utils.GenerateRandomSecret(48);
+
         var descriptor = new OpenIddictApplicationDescriptor
         {
             ClientId = request.ClientId,
-            ClientSecret = request.ClientSecret,
+            ClientSecret = clientSecret,
             DisplayName = request.DisplayName,
             ApplicationType = OpenIddictConstants.ClientTypes.Confidential,
             ConsentType = OpenIddictConstants.ConsentTypes.Explicit,
@@ -99,10 +102,18 @@ public class OAuthAppController : ControllerBase
 
         try
         {
-            await _applicationManager.CreateAsync(descriptor);
+            var app = await _applicationManager.CreateAsync(descriptor);
+            var appId = await _applicationManager.GetIdAsync(app);
             _logger.LogInformation("OAuth app {ClientId} created by user {UserId}", request.ClientId, currentUserId);
 
-            return CreatedAtAction(nameof(GetMyApps), new OAuthAppResponse { ClientId = request.ClientId });
+            var response = new CreateAppResponse(
+                Id: appId ?? string.Empty,
+                ClientId: request.ClientId,
+                ClientSecret: clientSecret,
+                DisplayName: request.DisplayName
+            );
+
+            return CreatedAtAction(nameof(GetMyApps), response);
         }
         catch (Exception ex)
         {
@@ -138,5 +149,217 @@ public class OAuthAppController : ControllerBase
         _logger.LogInformation("OAuth app {AppId} deleted by user {UserId}", id, currentUserId);
 
         return NoContent();
+    }
+
+    [HttpGet("{id}")]
+    [ProducesResponseType<OAuthAppDetailResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<OAuthAppDetailResponse>> GetAppById(string id)
+    {
+        var app = await _applicationManager.FindByIdAsync(id);
+        if (app is null)
+        {
+            return NotFound();
+        }
+
+        // 检查权限：只有应用的所有者才能查看详情
+        var properties = await _applicationManager.GetPropertiesAsync(app);
+        var ownerUserId = properties.TryGetValue("user_id", out var userIdValue) ? userIdValue.GetString() : null;
+        var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (ownerUserId != currentUserId)
+        {
+            _logger.LogWarning("User {CurrentUserId} attempted to view OAuth app {AppId} owned by {OwnerUserId}", currentUserId, id, ownerUserId);
+            return Forbid();
+        }
+
+        var clientId = await _applicationManager.GetClientIdAsync(app);
+        var displayName = await _applicationManager.GetDisplayNameAsync(app);
+        var appId = await _applicationManager.GetIdAsync(app);
+        var redirectUris = await _applicationManager.GetRedirectUrisAsync(app);
+
+        var response = new OAuthAppDetailResponse
+        {
+            Id = appId ?? string.Empty,
+            ClientId = clientId ?? string.Empty,
+            DisplayName = displayName ?? string.Empty,
+            UserId = ownerUserId,
+            RedirectUris = redirectUris.Select(u => u.ToString()).ToList()
+        };
+
+        return Ok(response);
+    }
+
+    [HttpPut("{id}")]
+    [ProducesResponseType<OAuthAppResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<OAuthAppResponse>> UpdateApp(string id, [FromBody] UpdateAppRequest request)
+    {
+        var app = await _applicationManager.FindByIdAsync(id);
+        if (app is null)
+        {
+            return NotFound();
+        }
+
+        // 检查权限：只有应用的所有者才能更新
+        var properties = await _applicationManager.GetPropertiesAsync(app);
+        var ownerUserId = properties.TryGetValue("user_id", out var userIdValue) ? userIdValue.GetString() : null;
+        var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (ownerUserId != currentUserId)
+        {
+            _logger.LogWarning("User {CurrentUserId} attempted to update OAuth app {AppId} owned by {OwnerUserId}", currentUserId, id, ownerUserId);
+            return Forbid();
+        }
+
+        var descriptor = new OpenIddictApplicationDescriptor
+        {
+            DisplayName = request.DisplayName
+        };
+
+        if (request.RedirectUris is not null)
+        {
+            foreach (var uri in request.RedirectUris)
+            {
+                descriptor.RedirectUris.Add(new Uri(uri));
+            }
+        }
+
+        try
+        {
+            await _applicationManager.UpdateAsync(app, descriptor);
+            _logger.LogInformation("OAuth app {AppId} updated by user {UserId}", id, currentUserId);
+
+            var clientId = await _applicationManager.GetClientIdAsync(app);
+            var displayName = await _applicationManager.GetDisplayNameAsync(app);
+            var appId = await _applicationManager.GetIdAsync(app);
+
+            var response = new OAuthAppResponse
+            {
+                Id = appId ?? string.Empty,
+                ClientId = clientId ?? string.Empty,
+                DisplayName = displayName ?? string.Empty,
+                UserId = ownerUserId
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update OAuth app {AppId}", id);
+            return BadRequest(new { message = "Could not update application" });
+        }
+    }
+
+    [HttpPatch("{id}")]
+    [ProducesResponseType<OAuthAppResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<OAuthAppResponse>> PatchApp(string id, [FromBody] PatchAppRequest request)
+    {
+        var app = await _applicationManager.FindByIdAsync(id);
+        if (app is null)
+        {
+            return NotFound();
+        }
+
+        // 检查权限：只有应用的所有者才能更新
+        var properties = await _applicationManager.GetPropertiesAsync(app);
+        var ownerUserId = properties.TryGetValue("user_id", out var userIdValue) ? userIdValue.GetString() : null;
+        var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (ownerUserId != currentUserId)
+        {
+            _logger.LogWarning("User {CurrentUserId} attempted to patch OAuth app {AppId} owned by {OwnerUserId}", currentUserId, id, ownerUserId);
+            return Forbid();
+        }
+
+        var descriptor = new OpenIddictApplicationDescriptor();
+
+        if (request.DisplayName is not null)
+        {
+            descriptor.DisplayName = request.DisplayName;
+        }
+
+        if (request.RedirectUris is not null)
+        {
+            foreach (var uri in request.RedirectUris)
+            {
+                descriptor.RedirectUris.Add(new Uri(uri));
+            }
+        }
+
+        try
+        {
+            await _applicationManager.UpdateAsync(app, descriptor);
+            _logger.LogInformation("OAuth app {AppId} patched by user {UserId}", id, currentUserId);
+
+            var clientId = await _applicationManager.GetClientIdAsync(app);
+            var displayName = await _applicationManager.GetDisplayNameAsync(app);
+            var appId = await _applicationManager.GetIdAsync(app);
+
+            var response = new OAuthAppResponse
+            {
+                Id = appId ?? string.Empty,
+                ClientId = clientId ?? string.Empty,
+                DisplayName = displayName ?? string.Empty,
+                UserId = ownerUserId
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to patch OAuth app {AppId}", id);
+            return BadRequest(new { message = "Could not update application" });
+        }
+    }
+
+    [HttpPost("{id}/secret")]
+    [ProducesResponseType<NewSecretResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<ActionResult<NewSecretResponse>> RegenerateSecret(string id)
+    {
+        var app = await _applicationManager.FindByIdAsync(id);
+        if (app is null)
+        {
+            return NotFound();
+        }
+
+        // 检查权限：只有应用的所有者才能重新生成密钥
+        var properties = await _applicationManager.GetPropertiesAsync(app);
+        var ownerUserId = properties.TryGetValue("user_id", out var userIdValue) ? userIdValue.GetString() : null;
+        var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (ownerUserId != currentUserId)
+        {
+            _logger.LogWarning("User {CurrentUserId} attempted to regenerate secret for OAuth app {AppId} owned by {OwnerUserId}", currentUserId, id, ownerUserId);
+            return Forbid();
+        }
+
+        var newSecret = Utils.GenerateRandomSecret(48);
+
+        var descriptor = new OpenIddictApplicationDescriptor
+        {
+            ClientSecret = newSecret
+        };
+
+        try
+        {
+            await _applicationManager.UpdateAsync(app, descriptor);
+            _logger.LogInformation("Secret regenerated for OAuth app {AppId} by user {UserId}", id, currentUserId);
+
+            return Ok(new NewSecretResponse(newSecret));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to regenerate secret for OAuth app {AppId}", id);
+            return BadRequest(new { message = "Could not regenerate secret" });
+        }
     }
 }
