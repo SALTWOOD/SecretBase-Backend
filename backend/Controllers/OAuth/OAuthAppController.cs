@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Abstractions;
+using System.Text.Json;
 
 namespace backend.Controllers.OAuth;
 
@@ -26,6 +27,7 @@ public class OAuthAppController : ControllerBase
     public async Task<ActionResult<IEnumerable<OAuthAppResponse>>> GetMyApps()
     {
         var apps = new List<OAuthAppResponse>();
+        var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
         await foreach (var app in _applicationManager.ListAsync())
         {
@@ -33,12 +35,22 @@ public class OAuthAppController : ControllerBase
             var displayName = await _applicationManager.GetDisplayNameAsync(app);
             var appId = await _applicationManager.GetIdAsync(app);
 
-            apps.Add(new OAuthAppResponse
+            // 获取应用的属性来检查所有者
+            var properties = await _applicationManager.GetPropertiesAsync(app);
+            JsonElement? userIdElement = properties.TryGetValue("user_id", out var userIdValue) ? userIdValue : null;
+            var userId = userIdElement?.GetString();
+
+            // 只返回当前用户创建的应用
+            if (userId == currentUserId)
             {
-                Id = appId ?? string.Empty,
-                ClientId = clientId ?? string.Empty,
-                DisplayName = displayName ?? string.Empty
-            });
+                apps.Add(new OAuthAppResponse
+                {
+                    Id = appId ?? string.Empty,
+                    ClientId = clientId ?? string.Empty,
+                    DisplayName = displayName ?? string.Empty,
+                    UserId = userId
+                });
+            }
         }
 
         return Ok(apps);
@@ -49,6 +61,12 @@ public class OAuthAppController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<OAuthAppResponse>> Create([FromBody] CreateAppRequest request)
     {
+        var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(currentUserId))
+        {
+            return Unauthorized(new { message = "User not authenticated" });
+        }
+
         var descriptor = new OpenIddictApplicationDescriptor
         {
             ClientId = request.ClientId,
@@ -65,6 +83,10 @@ public class OAuthAppController : ControllerBase
                 OpenIddictConstants.Permissions.Scopes.Email,
                 OpenIddictConstants.Permissions.Scopes.Profile
             },
+            Properties =
+            {
+                ["user_id"] = JsonSerializer.SerializeToElement(currentUserId)
+            }
         };
 
         if (request.RedirectUris is not null)
@@ -78,7 +100,7 @@ public class OAuthAppController : ControllerBase
         try
         {
             await _applicationManager.CreateAsync(descriptor);
-            _logger.LogInformation("OAuth app {ClientId} created by user", request.ClientId);
+            _logger.LogInformation("OAuth app {ClientId} created by user {UserId}", request.ClientId, currentUserId);
 
             return CreatedAtAction(nameof(GetMyApps), new OAuthAppResponse { ClientId = request.ClientId });
         }
@@ -92,6 +114,7 @@ public class OAuthAppController : ControllerBase
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Delete(string id)
     {
         var app = await _applicationManager.FindByIdAsync(id);
@@ -100,8 +123,19 @@ public class OAuthAppController : ControllerBase
             return NotFound();
         }
 
+        // 检查权限：只有应用的所有者才能删除
+        var properties = await _applicationManager.GetPropertiesAsync(app);
+        var ownerUserId = properties.TryGetValue("user_id", out var userIdValue) ? userIdValue.GetString() : null;
+        var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (ownerUserId != currentUserId)
+        {
+            _logger.LogWarning("User {CurrentUserId} attempted to delete OAuth app {AppId} owned by {OwnerUserId}", currentUserId, id, ownerUserId);
+            return Forbid();
+        }
+
         await _applicationManager.DeleteAsync(app);
-        _logger.LogWarning("OAuth app {AppId} deleted", id);
+        _logger.LogInformation("OAuth app {AppId} deleted by user {UserId}", id, currentUserId);
 
         return NoContent();
     }

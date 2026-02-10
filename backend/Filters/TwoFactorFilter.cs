@@ -32,8 +32,13 @@ public class TwoFactorFilter : IAsyncActionFilter
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
         var httpContext = context.HttpContext;
-        int id = int.Parse(httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-        ?? throw new UnauthorizedAccessException("Invalid user identity."));
+        var userIdClaim = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int id))
+        {
+            context.Result = new UnauthorizedResult();
+            return;
+        }
+
         var user = await _db.Users
             .FirstOrDefaultAsync(it => it.Id == id);
 

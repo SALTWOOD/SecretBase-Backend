@@ -3,6 +3,7 @@ using backend.Database.Entities;
 using backend.Filters;
 using backend.Services;
 using backend.Types.Response;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OtpNet;
@@ -24,6 +25,7 @@ public class TwoFactorPolicyController : BaseApiController
     public TwoFactorPolicyController(BaseServices deps) : base(deps) { }
 
     [HttpGet]
+    [Authorize]
     [ProducesResponseType<TwoFactorPolicyResponse>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPolicy()
     {
@@ -36,6 +38,7 @@ public class TwoFactorPolicyController : BaseApiController
     }
 
     [HttpPost("enable")]
+    [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> EnableForce2Fa()

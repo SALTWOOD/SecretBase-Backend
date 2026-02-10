@@ -12,6 +12,7 @@ public record OAuthAppResponse
     public string Id { get; init; } = string.Empty;
     public string ClientId { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
+    public string? UserId { get; init; }
 }
 
 public record OpenIddictTokenResponse(

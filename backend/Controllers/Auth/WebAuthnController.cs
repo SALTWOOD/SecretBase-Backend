@@ -4,6 +4,7 @@ using backend.Services;
 using backend.Types.Response;
 using Fido2NetLib;
 using Fido2NetLib.Objects;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
@@ -35,6 +36,7 @@ public class WebAuthnController : BaseApiController
     }
 
     [HttpPost("register/options")]
+    [Authorize]
     [ProducesResponseType<CredentialCreateOptions>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetRegisterOptions()
     {
@@ -48,6 +50,7 @@ public class WebAuthnController : BaseApiController
     }
 
     [HttpPost("register/verify")]
+    [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> VerifyRegistration([FromBody] AuthenticatorAttestationRawResponse response)
@@ -170,11 +173,13 @@ public class WebAuthnController : BaseApiController
     }
 
     [HttpGet("credentials")]
+    [Authorize]
     [ProducesResponseType<List<UserCredential>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> ListCredentials()
         => Ok(await _service.GetUserCredentialsAsync(CurrentUserId.ThrowIfNull()));
 
     [HttpDelete("credentials/{id:int}")]
+    [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> DeleteCredential(int id)
     {
@@ -183,6 +188,7 @@ public class WebAuthnController : BaseApiController
     }
 
     [HttpPut("credentials/{id:int}")]
+    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> PutCredential(int id, [FromBody] CredentialUpdateModel model)
     {

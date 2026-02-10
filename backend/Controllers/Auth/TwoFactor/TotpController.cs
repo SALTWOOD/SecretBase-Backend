@@ -3,6 +3,7 @@ using backend.Database.Entities;
 using backend.Filters;
 using backend.Services;
 using backend.Types.Response;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +33,7 @@ public class TotpController : BaseApiController
 
 
     [HttpPost("setup")]
+    [Authorize]
     [ProducesResponseType<TotpSetupResponse>(StatusCodes.Status200OK)]
     public async Task<IActionResult> Setup()
     {
@@ -65,6 +67,7 @@ public class TotpController : BaseApiController
     }
 
     [HttpPost("enable")]
+    [Authorize]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Enable([FromBody] TotpVerifyRequest request)
@@ -88,6 +91,7 @@ public class TotpController : BaseApiController
     }
 
     [HttpPost("disable")]
+    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Disable()
@@ -100,6 +104,7 @@ public class TotpController : BaseApiController
     }
 
     [HttpPost("verify")]
+    [Authorize]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Verify([FromBody] TotpVerifyRequest request)

@@ -4,6 +4,7 @@ using backend.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using System.Security.Cryptography;
 
 namespace backend.Controllers.Admin;
@@ -78,11 +79,42 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
     [HttpPut("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> UpdateInvitation(int id, [FromBody] UpdateInvitationRequest request)
     {
+        // 获取当前用户信息
+        var currentUserIdClaim = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier);
+        if (currentUserIdClaim == null || !int.TryParse(currentUserIdClaim.Value, out var currentUserId))
+        {
+            return Unauthorized(new { message = "Invalid user identity" });
+        }
+
+        // 获取当前用户的角色
+        var currentUser = await _db.Users
+            .Where(u => u.Id == currentUserId)
+            .Select(u => new { u.Role })
+            .FirstOrDefaultAsync();
+
+        if (currentUser == null)
+        {
+            return Unauthorized(new { message = "Current user not found" });
+        }
+
         var invite = await _db.Invites.FindAsync(id);
         if (invite == null)
             return NotFound(new { message = $"Invitation with ID {id} not found" });
+
+        // 获取邀请创建者的角色
+        var creator = await _db.Users
+            .Where(u => u.Id == invite.CreatorId)
+            .Select(u => new { u.Role })
+            .FirstOrDefaultAsync();
+
+        // 检查权限：只能修改等级低于自己的用户创建的邀请
+        if (creator != null && creator.Role >= currentUser.Role)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Cannot modify invitations created by users with equal or higher role level" });
+        }
 
         var changed = false;
 
@@ -117,11 +149,42 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
     [HttpDelete("{id:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> DeleteInvitation(int id)
     {
+        // 获取当前用户信息
+        var currentUserIdClaim = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier);
+        if (currentUserIdClaim == null || !int.TryParse(currentUserIdClaim.Value, out var currentUserId))
+        {
+            return Unauthorized(new { message = "Invalid user identity" });
+        }
+
+        // 获取当前用户的角色
+        var currentUser = await _db.Users
+            .Where(u => u.Id == currentUserId)
+            .Select(u => new { u.Role })
+            .FirstOrDefaultAsync();
+
+        if (currentUser == null)
+        {
+            return Unauthorized(new { message = "Current user not found" });
+        }
+
         var invite = await _db.Invites.FindAsync(id);
         if (invite == null)
             return NotFound();
+
+        // 获取邀请创建者的角色
+        var creator = await _db.Users
+            .Where(u => u.Id == invite.CreatorId)
+            .Select(u => new { u.Role })
+            .FirstOrDefaultAsync();
+
+        // 检查权限：只能删除等级低于自己的用户创建的邀请
+        if (creator != null && creator.Role >= currentUser.Role)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Cannot delete invitations created by users with equal or higher role level" });
+        }
 
         _db.Invites.Remove(invite);
         await _db.SaveChangesAsync();

@@ -21,7 +21,7 @@ public class BaseApiController(BaseServices deps) : ControllerBase
 
     protected int? CurrentUserId => int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int result) ? result : null;
 
-    protected Task<User> CurrentUser => _db.Users.FirstAsync(it => it.Id == CurrentUserId);
+    protected Task<User?> CurrentUser => _db.Users.FirstOrDefaultAsync(it => it.Id == CurrentUserId);
 
     protected async ValueTask<int> RefreshTokenAsync(User user, TokenPermissionLevel permissionLevel = TokenPermissionLevel.Full)
     {

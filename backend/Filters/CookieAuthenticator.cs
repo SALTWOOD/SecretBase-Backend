@@ -26,16 +26,22 @@ public class CookieAuthenticator : AuthenticationHandler<AuthenticationSchemeOpt
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        if (!Request.Cookies.TryGetValue("auth_token", out var token))
+        if (!Request.Cookies.TryGetValue("auth_token", out var token) || string.IsNullOrEmpty(token))
             return AuthenticateResult.Fail("Missing token");
 
         var principal = await _sessionService.ValidateSessionAsync(token);
         if (principal == null)
+        {
+            await _sessionService.RemoveSessionAsync(token);
             return AuthenticateResult.Fail("Session expired or invalid");
+        }
 
         var idClaim = principal.FindFirst(ClaimTypes.NameIdentifier);
         if (idClaim == null || !int.TryParse(idClaim.Value, out var userId))
+        {
+            await _sessionService.RemoveSessionAsync(token);
             return AuthenticateResult.Fail("Invalid session data");
+        }
 
         bool isBanned = await _db.Users
             .Where(u => u.Id == userId)
