@@ -45,7 +45,7 @@ public class UserAdminController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateUserStatus(int id, [FromBody] UpdateUserStatusBody body)
     {
-        // 获取当前用户信息
+        // Get current user information
         var user = await CurrentUser;
 
         if (user == null)
@@ -53,7 +53,7 @@ public class UserAdminController(BaseServices deps) : BaseApiController(deps)
             return Unauthorized(new { message = "Current user not found" });
         }
 
-        // 获取目标用户信息
+        // Get target user information
         var targetUser = await _db.Users
             .Where(u => u.Id == id)
             .Select(u => new { u.Id, u.Role })
@@ -69,7 +69,7 @@ public class UserAdminController(BaseServices deps) : BaseApiController(deps)
             return BadRequest(new MessageResponse { Message = "Cannot ban yourself!" });
         }
 
-        // 检查权限：只能操作等级低于自己的用户
+        // Check permission: can only operate on users with lower role level than oneself
         if (targetUser.Role >= user.Role)
         {
             return StatusCode(StatusCodes.Status403Forbidden, new MessageResponse { Message = "Cannot modify users with equal or higher role level" });

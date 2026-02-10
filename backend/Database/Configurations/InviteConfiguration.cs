@@ -32,7 +32,7 @@ public class InviteConfiguration : IEntityTypeConfiguration<Invite>
         builder.Property(x => x.UsedCount).HasDefaultValue(0);
         builder.Property(x => x.IsDisabled).HasDefaultValue(false);
 
-        // 配置 Creator 双向关系
+        // Configure Creator bidirectional relationship
         builder.HasOne(x => x.Creator)
                .WithMany(u => u.MyIssuedInvites)
                .HasForeignKey(x => x.CreatorId)

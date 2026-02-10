@@ -17,7 +17,7 @@ public class User
 
     public bool IsBanned { get; set; } = false;
 
-    // PG 推荐使用 UTC 时间
+    // PG recommends using UTC time
     public DateTime RegisterTime { get; set; } = DateTime.UtcNow;
 
     public string Avatar { get; set; } = string.Empty;

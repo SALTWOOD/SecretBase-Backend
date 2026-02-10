@@ -28,10 +28,10 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    // 配置 PostgreSQL
+    // Configure PostgreSQL
     options.UseNpgsql(connectionString);
 
-    // 注册 OpenIddict 实体
+    // Register OpenIddict entities
     options.UseOpenIddict();
 });
 

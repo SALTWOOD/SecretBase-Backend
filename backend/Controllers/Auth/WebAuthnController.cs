@@ -109,17 +109,17 @@ public class WebAuthnController : BaseApiController
             return BadRequest(new MessageResponse { Message = "Authentication token not found" });
         }
 
-        // 获取 token 权限级别
+        // Get token permission level
         var permissionLevel = await _session.GetTokenPermissionLevelAsync(authToken);
 
         if (!isLogin)
         {
-            // 如果是无权限 token，升级为完全权限 token
+            // If it's a no permission token, upgrade to full permission token
             if (permissionLevel == TokenPermissionLevel.None)
             {
                 await _session.UpgradeTokenAsync(authToken);
             }
-            // 如果已经是完全权限 token，设置 2FA 宽限期
+            // If it's already a full permission token, set 2FA grace period
             else if (permissionLevel == TokenPermissionLevel.Full)
             {
                 await _twoFactor.GrantGracePeriodAsync(user.Id, authToken);
@@ -130,12 +130,12 @@ public class WebAuthnController : BaseApiController
         }
         else
         {
-            // 如果是无权限 token，升级为完全权限 token
+            // If it's a no permission token, upgrade to full permission token
             if (permissionLevel == TokenPermissionLevel.None)
             {
                 await _session.UpgradeTokenAsync(authToken);
             }
-            // 如果已经是完全权限 token，设置 2FA 宽限期
+            // If it's already a full permission token, set 2FA grace period
             else if (permissionLevel == TokenPermissionLevel.Full)
             {
                 await _twoFactor.GrantGracePeriodAsync(user.Id, authToken);

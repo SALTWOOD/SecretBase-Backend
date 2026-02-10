@@ -34,6 +34,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
                .HasColumnType("timestamptz")
                .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-        // MyIssuedInvites 关系在 InviteConfiguration 中配置
+        // MyIssuedInvites relationship is configured in InviteConfiguration
     }
 }

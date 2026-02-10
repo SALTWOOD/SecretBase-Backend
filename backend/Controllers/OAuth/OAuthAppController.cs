@@ -36,12 +36,12 @@ public class OAuthAppController : ControllerBase
             var displayName = await _applicationManager.GetDisplayNameAsync(app);
             var appId = await _applicationManager.GetIdAsync(app);
 
-            // 获取应用的属性来检查所有者
+            // Get application properties to check owner
             var properties = await _applicationManager.GetPropertiesAsync(app);
             JsonElement? userIdElement = properties.TryGetValue("user_id", out var userIdValue) ? userIdValue : null;
             var userId = userIdElement?.GetString();
 
-            // 只返回当前用户创建的应用
+            // Only return applications created by current user
             if (userId == currentUserId)
             {
                 apps.Add(new OAuthAppResponse
@@ -134,7 +134,7 @@ public class OAuthAppController : ControllerBase
             return NotFound();
         }
 
-        // 检查权限：只有应用的所有者才能删除
+        // Check permission: only the application owner can delete
         var properties = await _applicationManager.GetPropertiesAsync(app);
         var ownerUserId = properties.TryGetValue("user_id", out var userIdValue) ? userIdValue.GetString() : null;
         var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -163,7 +163,7 @@ public class OAuthAppController : ControllerBase
             return NotFound();
         }
 
-        // 检查权限：只有应用的所有者才能查看详情
+        // Check permission: only the application owner can view details
         var properties = await _applicationManager.GetPropertiesAsync(app);
         var ownerUserId = properties.TryGetValue("user_id", out var userIdValue) ? userIdValue.GetString() : null;
         var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -204,7 +204,7 @@ public class OAuthAppController : ControllerBase
             return NotFound();
         }
 
-        // 检查权限：只有应用的所有者才能更新
+        // Check permission: only the application owner can update
         var properties = await _applicationManager.GetPropertiesAsync(app);
         var ownerUserId = properties.TryGetValue("user_id", out var userIdValue) ? userIdValue.GetString() : null;
         var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -267,7 +267,7 @@ public class OAuthAppController : ControllerBase
             return NotFound();
         }
 
-        // 检查权限：只有应用的所有者才能更新
+        // Check permission: only the application owner can update
         var properties = await _applicationManager.GetPropertiesAsync(app);
         var ownerUserId = properties.TryGetValue("user_id", out var userIdValue) ? userIdValue.GetString() : null;
         var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -331,7 +331,7 @@ public class OAuthAppController : ControllerBase
             return NotFound();
         }
 
-        // 检查权限：只有应用的所有者才能重新生成密钥
+        // Check permission: only the application owner can regenerate secret
         var properties = await _applicationManager.GetPropertiesAsync(app);
         var ownerUserId = properties.TryGetValue("user_id", out var userIdValue) ? userIdValue.GetString() : null;
         var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;

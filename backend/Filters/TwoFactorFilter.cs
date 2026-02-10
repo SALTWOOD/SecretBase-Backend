@@ -46,24 +46,24 @@ public class TwoFactorFilter : IAsyncActionFilter
         {
             var authToken = httpContext.Request.Cookies["auth_token"];
 
-            // 检查 token 是否存在
+            // Check if token exists
             if (string.IsNullOrEmpty(authToken))
             {
                 context.Result = new PreconditionRequiredResult("2fa_challenge");
                 return;
             }
 
-            // 获取 token 权限级别
+            // Get token permission level
             var permissionLevel = await _session.GetTokenPermissionLevelAsync(authToken);
 
-            // 如果 token 权限级别为 None，要求进行 2FA 验证
+            // If token permission level is None, require 2FA verification
             if (permissionLevel == TokenPermissionLevel.None)
             {
                 context.Result = new PreconditionRequiredResult("2fa_challenge");
                 return;
             }
 
-            // 如果 token 权限级别为 Full，检查是否在 2FA 宽限期内
+            // If token permission level is Full, check if within 2FA grace period
             if (permissionLevel == TokenPermissionLevel.Full && !await _tfManager.IsApprovedAsync(user.Id, authToken))
             {
                 context.Result = new PreconditionRequiredResult("2fa_challenge");

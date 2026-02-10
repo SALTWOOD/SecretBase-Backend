@@ -18,17 +18,17 @@ public static class Permissions
 }
 
 /// <summary>
-/// Token 权限级别
+/// Token permission level
 /// </summary>
 public enum TokenPermissionLevel
 {
     /// <summary>
-    /// 无权限 token，只能在登录时使用，需要通过 2FA 验证升级
+    /// No permission token, can only be used during login, needs to be upgraded through 2FA verification
     /// </summary>
     None = 0,
 
     /// <summary>
-    /// 完全权限 token，可以读写数据
+    /// Full permission token, can read and write data
     /// </summary>
     Full = 1
 }
@@ -36,12 +36,12 @@ public enum TokenPermissionLevel
 public static class TokenPermissions
 {
     /// <summary>
-    /// 无权限 token 的权限集合
+    /// Permission set for no permission token
     /// </summary>
     public static HashSet<string> None => new HashSet<string>();
 
     /// <summary>
-    /// 完全权限 token 的权限集合
+    /// Permission set for full permission token
     /// </summary>
     public static HashSet<string> Full => new HashSet<string> { Permissions.All };
 }
@@ -88,10 +88,10 @@ public class SessionService
     }
 
     /// <summary>
-    /// 升级 token 权限级别
+    /// Upgrade token permission level
     /// </summary>
-    /// <param name="token">要升级的 token</param>
-    /// <returns>是否升级成功</returns>
+    /// <param name="token">The token to upgrade</param>
+    /// <returns>Whether the upgrade was successful</returns>
     public async Task<bool> UpgradeTokenAsync(string token)
     {
         var key = $"{SessionPrefix}{token}";
@@ -110,7 +110,7 @@ public class SessionService
             PermissionLevel = TokenPermissionLevel.Full
         };
 
-        // 获取当前剩余过期时间
+        // Get current remaining time to live
         var ttl = await _redis.KeyTimeToLiveAsync(key);
         if (ttl.HasValue)
         {
@@ -121,10 +121,10 @@ public class SessionService
     }
 
     /// <summary>
-    /// 获取 token 的权限级别
+    /// Get token permission level
     /// </summary>
     /// <param name="token">token</param>
-    /// <returns>权限级别，如果 token 不存在返回 null</returns>
+    /// <returns>Permission level, returns null if token doesn't exist</returns>
     public async Task<TokenPermissionLevel?> GetTokenPermissionLevelAsync(string token)
     {
         var data = await _redis.StringGetAsync($"{SessionPrefix}{token}");

@@ -22,7 +22,7 @@ public class OAuthPublicController : ControllerBase
     [ProducesResponseType<MessageResponse>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAppInfo(string clientId)
     {
-        // 使用 Manager 查询应用实体
+        // Use Manager to query application entity
         var application = await _applicationManager.FindByClientIdAsync(clientId);
 
         if (application == null)
@@ -31,8 +31,8 @@ public class OAuthPublicController : ControllerBase
             return NotFound(new MessageResponse { Message = "Application not found" });
         }
 
-        // 映射为 DTO 返回给前端
-        // 只暴露安全的公开字段，绝对不要暴露 ClientSecret！
+        // Map to DTO and return to frontend
+        // Only expose safe public fields, never expose ClientSecret!
         var response = new OAuthAppResponse
         {
             ClientId = (await _applicationManager.GetClientIdAsync(application)).ThrowIfNull(),
