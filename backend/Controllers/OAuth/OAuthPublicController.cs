@@ -37,6 +37,9 @@ public class OAuthPublicController : ControllerBase
         {
             ClientId = (await _applicationManager.GetClientIdAsync(application)).ThrowIfNull(),
             DisplayName = (await _applicationManager.GetDisplayNameAsync(application)).ThrowIfNull(),
+            ClientType = await _applicationManager.GetClientTypeAsync(application) ?? "confidential",
+            ApplicationType = await _applicationManager.GetApplicationTypeAsync(application) ?? "web",
+            ConsentType = await _applicationManager.GetConsentTypeAsync(application) ?? "explicit"
         };
 
         return Ok(response);

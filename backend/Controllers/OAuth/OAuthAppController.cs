@@ -1,8 +1,9 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using backend;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Abstractions;
 using System.Text.Json;
-using backend;
+using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace backend.Controllers.OAuth;
 
@@ -35,6 +36,9 @@ public class OAuthAppController : ControllerBase
             var clientId = await _applicationManager.GetClientIdAsync(app);
             var displayName = await _applicationManager.GetDisplayNameAsync(app);
             var appId = await _applicationManager.GetIdAsync(app);
+            var clientType = await _applicationManager.GetClientTypeAsync(app);
+            var applicationType = await _applicationManager.GetApplicationTypeAsync(app);
+            var consentType = await _applicationManager.GetConsentTypeAsync(app);
 
             // Get application properties to check owner
             var properties = await _applicationManager.GetPropertiesAsync(app);
@@ -49,7 +53,10 @@ public class OAuthAppController : ControllerBase
                     Id = appId ?? string.Empty,
                     ClientId = clientId ?? string.Empty,
                     DisplayName = displayName ?? string.Empty,
-                    UserId = userId
+                    UserId = userId,
+                    ClientType = clientType ?? "confidential",
+                    ApplicationType = applicationType ?? "web",
+                    ConsentType = consentType ?? "explicit"
                 });
             }
         }
@@ -68,23 +75,50 @@ public class OAuthAppController : ControllerBase
             return Unauthorized(new { message = "User not authenticated" });
         }
 
+        // Generate a random client ID with prefix "sb_app_"
+        var clientId = "sb_app_" + Utils.GenerateRandomSecret(16);
+
         var clientSecret = Utils.GenerateRandomSecret(48);
+
+        var clientType = request.ClientType?.ToLowerInvariant() switch
+        {
+            "public" => ClientTypes.Public,
+            "confidential" => ClientTypes.Confidential,
+            _ => ClientTypes.Confidential
+        };
+
+        var applicationType = request.ApplicationType?.ToLowerInvariant() switch
+        {
+            "web" => ApplicationTypes.Web,
+            "native" => ApplicationTypes.Native,
+            _ => ApplicationTypes.Web
+        };
+
+        var consentType = request.ConsentType?.ToLowerInvariant() switch
+        {
+            "implicit" => ConsentTypes.Implicit,
+            "explicit" => ConsentTypes.Explicit,
+            "external" => ConsentTypes.External,
+            "systematic" => ConsentTypes.Systematic,
+            _ => ConsentTypes.Explicit
+        };
 
         var descriptor = new OpenIddictApplicationDescriptor
         {
-            ClientId = request.ClientId,
+            ClientId = clientId,
             ClientSecret = clientSecret,
+            ClientType = clientType,
             DisplayName = request.DisplayName,
-            ApplicationType = OpenIddictConstants.ClientTypes.Confidential,
-            ConsentType = OpenIddictConstants.ConsentTypes.Explicit,
+            ApplicationType = applicationType,
+            ConsentType = consentType,
             Permissions =
             {
-                OpenIddictConstants.Permissions.Endpoints.Authorization,
-                OpenIddictConstants.Permissions.Endpoints.Token,
-                OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
-                OpenIddictConstants.Permissions.ResponseTypes.Code,
-                OpenIddictConstants.Permissions.Scopes.Email,
-                OpenIddictConstants.Permissions.Scopes.Profile
+                Permissions.Endpoints.Authorization,
+                Permissions.Endpoints.Token,
+                Permissions.GrantTypes.AuthorizationCode,
+                Permissions.ResponseTypes.Code,
+                Permissions.Scopes.Email,
+                Permissions.Scopes.Profile
             },
             Properties =
             {
@@ -104,11 +138,11 @@ public class OAuthAppController : ControllerBase
         {
             var app = await _applicationManager.CreateAsync(descriptor);
             var appId = await _applicationManager.GetIdAsync(app);
-            _logger.LogInformation("OAuth app {ClientId} created by user {UserId}", request.ClientId, currentUserId);
+            _logger.LogInformation("OAuth app {ClientId} created by user {UserId}", clientId, currentUserId);
 
             var response = new CreateAppResponse(
                 Id: appId ?? string.Empty,
-                ClientId: request.ClientId,
+                ClientId: clientId,
                 ClientSecret: clientSecret,
                 DisplayName: request.DisplayName
             );
@@ -117,7 +151,7 @@ public class OAuthAppController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create OAuth app {ClientId}", request.ClientId);
+            _logger.LogError(ex, "Failed to create OAuth app {ClientId}", clientId);
             return BadRequest(new { message = "Could not create application" });
         }
     }
@@ -178,6 +212,9 @@ public class OAuthAppController : ControllerBase
         var displayName = await _applicationManager.GetDisplayNameAsync(app);
         var appId = await _applicationManager.GetIdAsync(app);
         var redirectUris = await _applicationManager.GetRedirectUrisAsync(app);
+        var clientType = await _applicationManager.GetClientTypeAsync(app);
+        var applicationType = await _applicationManager.GetApplicationTypeAsync(app);
+        var consentType = await _applicationManager.GetConsentTypeAsync(app);
 
         var response = new OAuthAppDetailResponse
         {
@@ -185,7 +222,10 @@ public class OAuthAppController : ControllerBase
             ClientId = clientId ?? string.Empty,
             DisplayName = displayName ?? string.Empty,
             UserId = ownerUserId,
-            RedirectUris = redirectUris.Select(u => u.ToString()).ToList()
+            RedirectUris = redirectUris.Select(u => u.ToString()).ToList(),
+            ClientType = clientType ?? "confidential",
+            ApplicationType = applicationType ?? "web",
+            ConsentType = consentType ?? "explicit"
         };
 
         return Ok(response);
@@ -215,17 +255,52 @@ public class OAuthAppController : ControllerBase
             return Forbid();
         }
 
-        var descriptor = new OpenIddictApplicationDescriptor
-        {
-            DisplayName = request.DisplayName
-        };
+        // Populate descriptor from existing application to preserve all properties
+        var descriptor = new OpenIddictApplicationDescriptor();
+        await _applicationManager.PopulateAsync(descriptor, app);
+
+        // Update the fields that are provided in the request
+        descriptor.DisplayName = request.DisplayName;
 
         if (request.RedirectUris is not null)
         {
+            descriptor.RedirectUris.Clear();
             foreach (var uri in request.RedirectUris)
             {
                 descriptor.RedirectUris.Add(new Uri(uri));
             }
+        }
+
+        if (request.ClientType is not null)
+        {
+            descriptor.ClientType = request.ClientType.ToLowerInvariant() switch
+            {
+                "public" => ClientTypes.Public,
+                "confidential" => ClientTypes.Confidential,
+                _ => ClientTypes.Confidential
+            };
+        }
+
+        if (request.ApplicationType is not null)
+        {
+            descriptor.ApplicationType = request.ApplicationType.ToLowerInvariant() switch
+            {
+                "web" => ApplicationTypes.Web,
+                "native" => ApplicationTypes.Native,
+                _ => ApplicationTypes.Web
+            };
+        }
+
+        if (request.ConsentType is not null)
+        {
+            descriptor.ConsentType = request.ConsentType.ToLowerInvariant() switch
+            {
+                "implicit" => ConsentTypes.Implicit,
+                "explicit" => ConsentTypes.Explicit,
+                "external" => ConsentTypes.External,
+                "systematic" => ConsentTypes.Systematic,
+                _ => ConsentTypes.Explicit
+            };
         }
 
         try
@@ -236,13 +311,19 @@ public class OAuthAppController : ControllerBase
             var clientId = await _applicationManager.GetClientIdAsync(app);
             var displayName = await _applicationManager.GetDisplayNameAsync(app);
             var appId = await _applicationManager.GetIdAsync(app);
+            var clientType = await _applicationManager.GetClientTypeAsync(app);
+            var applicationType = await _applicationManager.GetApplicationTypeAsync(app);
+            var consentType = await _applicationManager.GetConsentTypeAsync(app);
 
             var response = new OAuthAppResponse
             {
                 Id = appId ?? string.Empty,
                 ClientId = clientId ?? string.Empty,
                 DisplayName = displayName ?? string.Empty,
-                UserId = ownerUserId
+                UserId = ownerUserId,
+                ClientType = clientType ?? "confidential",
+                ApplicationType = applicationType ?? "web",
+                ConsentType = consentType ?? "explicit"
             };
 
             return Ok(response);
@@ -278,8 +359,11 @@ public class OAuthAppController : ControllerBase
             return Forbid();
         }
 
+        // Populate descriptor from existing application to preserve all properties
         var descriptor = new OpenIddictApplicationDescriptor();
+        await _applicationManager.PopulateAsync(descriptor, app);
 
+        // Update only the fields that are provided in the request
         if (request.DisplayName is not null)
         {
             descriptor.DisplayName = request.DisplayName;
@@ -287,10 +371,43 @@ public class OAuthAppController : ControllerBase
 
         if (request.RedirectUris is not null)
         {
+            descriptor.RedirectUris.Clear();
             foreach (var uri in request.RedirectUris)
             {
                 descriptor.RedirectUris.Add(new Uri(uri));
             }
+        }
+
+        if (request.ClientType is not null)
+        {
+            descriptor.ClientType = request.ClientType.ToLowerInvariant() switch
+            {
+                "public" => ClientTypes.Public,
+                "confidential" => ClientTypes.Confidential,
+                _ => ClientTypes.Confidential
+            };
+        }
+
+        if (request.ApplicationType is not null)
+        {
+            descriptor.ApplicationType = request.ApplicationType.ToLowerInvariant() switch
+            {
+                "web" => ApplicationTypes.Web,
+                "native" => ApplicationTypes.Native,
+                _ => ApplicationTypes.Web
+            };
+        }
+
+        if (request.ConsentType is not null)
+        {
+            descriptor.ConsentType = request.ConsentType.ToLowerInvariant() switch
+            {
+                "implicit" => ConsentTypes.Implicit,
+                "explicit" => ConsentTypes.Explicit,
+                "external" => ConsentTypes.External,
+                "systematic" => ConsentTypes.Systematic,
+                _ => ConsentTypes.Explicit
+            };
         }
 
         try
@@ -301,13 +418,19 @@ public class OAuthAppController : ControllerBase
             var clientId = await _applicationManager.GetClientIdAsync(app);
             var displayName = await _applicationManager.GetDisplayNameAsync(app);
             var appId = await _applicationManager.GetIdAsync(app);
+            var clientType = await _applicationManager.GetClientTypeAsync(app);
+            var applicationType = await _applicationManager.GetApplicationTypeAsync(app);
+            var consentType = await _applicationManager.GetConsentTypeAsync(app);
 
             var response = new OAuthAppResponse
             {
                 Id = appId ?? string.Empty,
                 ClientId = clientId ?? string.Empty,
                 DisplayName = displayName ?? string.Empty,
-                UserId = ownerUserId
+                UserId = ownerUserId,
+                ClientType = clientType ?? "confidential",
+                ApplicationType = applicationType ?? "web",
+                ConsentType = consentType ?? "explicit"
             };
 
             return Ok(response);
@@ -344,10 +467,12 @@ public class OAuthAppController : ControllerBase
 
         var newSecret = Utils.GenerateRandomSecret(48);
 
-        var descriptor = new OpenIddictApplicationDescriptor
-        {
-            ClientSecret = newSecret
-        };
+        // Populate descriptor from existing application to preserve all properties
+        var descriptor = new OpenIddictApplicationDescriptor();
+        await _applicationManager.PopulateAsync(descriptor, app);
+
+        // Update only the client secret
+        descriptor.ClientSecret = newSecret;
 
         try
         {
