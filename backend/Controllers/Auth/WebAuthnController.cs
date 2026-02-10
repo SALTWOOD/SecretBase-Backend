@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
 using System.Text.Json;
+using static backend.Services.SessionService;
 
 namespace backend.Controllers.Auth;
 
@@ -67,7 +68,7 @@ public class WebAuthnController : BaseApiController
     }
 
     [HttpPost("login/verify")]
-    [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<MessageResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> VerifyLogin([FromBody] AuthenticatorAssertionRawResponse response, [FromQuery] bool isLogin = false)
     {
@@ -99,23 +100,51 @@ public class WebAuthnController : BaseApiController
         await _db.SaveChangesAsync();
         var user = await _db.Users.FirstAsync(it => it.Id == credential.UserId);
 
+        var authToken = Request.Cookies[Constants.AUTH_TOKEN_COOKIE_NAME];
+        if (string.IsNullOrEmpty(authToken))
+        {
+            return BadRequest(new MessageResponse { Message = "Authentication token not found" });
+        }
+
+        // 获取 token 权限级别
+        var permissionLevel = await _session.GetTokenPermissionLevelAsync(authToken);
+
         if (!isLogin)
         {
-            await _twoFactor.GrantGracePeriodAsync(user.Id, Request.Cookies[Constants.AUTH_TOKEN_COOKIE_NAME]!);
+            // 如果是无权限 token，升级为完全权限 token
+            if (permissionLevel == TokenPermissionLevel.None)
+            {
+                await _session.UpgradeTokenAsync(authToken);
+            }
+            // 如果已经是完全权限 token，设置 2FA 宽限期
+            else if (permissionLevel == TokenPermissionLevel.Full)
+            {
+                await _twoFactor.GrantGracePeriodAsync(user.Id, authToken);
+            }
+
             await _redis.KeyDeleteAsync(cacheKey);
             return NoContent();
         }
         else
         {
-            int expires = await RefreshTokenAsync(user);
+            // 如果是无权限 token，升级为完全权限 token
+            if (permissionLevel == TokenPermissionLevel.None)
+            {
+                await _session.UpgradeTokenAsync(authToken);
+            }
+            // 如果已经是完全权限 token，设置 2FA 宽限期
+            else if (permissionLevel == TokenPermissionLevel.Full)
+            {
+                await _twoFactor.GrantGracePeriodAsync(user.Id, authToken);
+            }
+
+            int expires = await RefreshTokenAsync(user, TokenPermissionLevel.Full);
             var autoRenew = await _setting.Get<bool>("site.security.cookie.auto_renew");
             var expiresValue = autoRenew ? DateTime.UtcNow.AddHours(expires) : (DateTime?)null;
 
-            return Ok(new AuthResponse
+            return Ok(new MessageResponse
             {
-                Message = "Login successful.",
-                User = user,
-                Expires = expiresValue
+                Message = "Operation successful"
             });
         }
     }

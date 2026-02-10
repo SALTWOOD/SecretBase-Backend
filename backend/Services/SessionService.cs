@@ -17,11 +17,41 @@ public static class Permissions
     public static string AdminWrite = "admin:write";
 }
 
+/// <summary>
+/// Token 权限级别
+/// </summary>
+public enum TokenPermissionLevel
+{
+    /// <summary>
+    /// 无权限 token，只能在登录时使用，需要通过 2FA 验证升级
+    /// </summary>
+    None = 0,
+
+    /// <summary>
+    /// 完全权限 token，可以读写数据
+    /// </summary>
+    Full = 1
+}
+
+public static class TokenPermissions
+{
+    /// <summary>
+    /// 无权限 token 的权限集合
+    /// </summary>
+    public static HashSet<string> None => new HashSet<string>();
+
+    /// <summary>
+    /// 完全权限 token 的权限集合
+    /// </summary>
+    public static HashSet<string> Full => new HashSet<string> { Permissions.All };
+}
+
 public readonly record struct SessionData(
     int Id,
     UserRole Role,
     HashSet<string> Access,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    TokenPermissionLevel PermissionLevel
 );
 
 public class SessionService
@@ -36,7 +66,7 @@ public class SessionService
         _setting = setting;
     }
 
-    public async Task<(string, int)> CreateSessionAsync(User user, HashSet<string>? access = null, int? expireHours = null)
+    public async Task<(string, int)> CreateSessionAsync(User user, HashSet<string>? access = null, int? expireHours = null, TokenPermissionLevel permissionLevel = TokenPermissionLevel.Full)
     {
         if (access == null) access = [Permissions.All];
         var hours = expireHours.HasValue ? expireHours.Value : await _setting.Get<int>(SettingKeys.Site.Security.Cookie.ExpireHours);
@@ -48,12 +78,60 @@ public class SessionService
             Id = user.Id,
             Role = user.Role,
             Access = access,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            PermissionLevel = permissionLevel
         };
 
         await _redis.StringSetAsync(key, JsonSerializer.Serialize(sessionData), TimeSpan.FromHours(hours));
 
         return (token, hours);
+    }
+
+    /// <summary>
+    /// 升级 token 权限级别
+    /// </summary>
+    /// <param name="token">要升级的 token</param>
+    /// <returns>是否升级成功</returns>
+    public async Task<bool> UpgradeTokenAsync(string token)
+    {
+        var key = $"{SessionPrefix}{token}";
+        var data = await _redis.StringGetAsync(key);
+        if (data.IsNullOrEmpty) return false;
+
+        var session = JsonSerializer.Deserialize<SessionData>(data.ToString());
+        if (session.PermissionLevel == TokenPermissionLevel.Full) return false;
+
+        var upgradedSession = new SessionData
+        {
+            Id = session.Id,
+            Role = session.Role,
+            Access = TokenPermissions.Full,
+            CreatedAt = session.CreatedAt,
+            PermissionLevel = TokenPermissionLevel.Full
+        };
+
+        // 获取当前剩余过期时间
+        var ttl = await _redis.KeyTimeToLiveAsync(key);
+        if (ttl.HasValue)
+        {
+            await _redis.StringSetAsync(key, JsonSerializer.Serialize(upgradedSession), ttl.Value);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 获取 token 的权限级别
+    /// </summary>
+    /// <param name="token">token</param>
+    /// <returns>权限级别，如果 token 不存在返回 null</returns>
+    public async Task<TokenPermissionLevel?> GetTokenPermissionLevelAsync(string token)
+    {
+        var data = await _redis.StringGetAsync($"{SessionPrefix}{token}");
+        if (data.IsNullOrEmpty) return null;
+
+        var session = JsonSerializer.Deserialize<SessionData>(data.ToString());
+        return session.PermissionLevel;
     }
 
     public async Task<ClaimsPrincipal?> ValidateSessionAsync(string token)

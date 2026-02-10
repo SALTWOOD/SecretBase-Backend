@@ -23,9 +23,10 @@ public class BaseApiController(BaseServices deps) : ControllerBase
 
     protected Task<User> CurrentUser => _db.Users.FirstAsync(it => it.Id == CurrentUserId);
 
-    protected async ValueTask<int> RefreshTokenAsync(User user)
+    protected async ValueTask<int> RefreshTokenAsync(User user, TokenPermissionLevel permissionLevel = TokenPermissionLevel.Full)
     {
-        (string token, int hours) = await _session.CreateSessionAsync(user, [Permissions.All]);
+        var access = permissionLevel == TokenPermissionLevel.Full ? [Permissions.All] : TokenPermissions.None;
+        (string token, int hours) = await _session.CreateSessionAsync(user, access, permissionLevel: permissionLevel);
 
         Response.Cookies.Append(Constants.AUTH_TOKEN_COOKIE_NAME, token, new CookieOptions
         {

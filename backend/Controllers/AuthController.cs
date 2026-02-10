@@ -7,6 +7,7 @@ using backend.Types.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using static backend.Services.SessionService;
 
 namespace backend.Controllers;
 
@@ -30,18 +31,41 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
             return BadRequest(new MessageResponse("Invalid email or password."));
         }
 
-        await UpdateLastLoginAsync(user, HttpContext);
-        int expires = await RefreshTokenAsync(user);
-
         var autoRenew = await _setting.Get<bool>("site.security.cookie.auto_renew");
-        DateTime? expiresValue = autoRenew ? DateTime.UtcNow.AddHours(expires) : null;
 
-        return Ok(new AuthResponse
+        if (user.ForceTwoFactor)
         {
-            Message = "Login successful.",
-            User = user,
-            Expires = expiresValue
-        });
+            int expires = await RefreshTokenAsync(user, TokenPermissionLevel.None);
+            DateTime? expiresValue = autoRenew ? DateTime.UtcNow.AddHours(expires) : null;
+
+            return Ok(new AuthResponse
+            {
+                Status = "pending",
+                Data = new TokenRenewResponse
+                {
+                    User = user,
+                    Expires = expiresValue,
+                    Message = "2FA challenge required"
+                }
+            });
+        }
+        else
+        {
+            await UpdateLastLoginAsync(user, HttpContext);
+            int expires = await RefreshTokenAsync(user, TokenPermissionLevel.Full);
+            DateTime? expiresValue = autoRenew ? DateTime.UtcNow.AddHours(expires) : null;
+
+            return Ok(new AuthResponse
+            {
+                Status = "success",
+                Data = new TokenRenewResponse
+                {
+                    User = user,
+                    Expires = expiresValue,
+                    Message = "Login success"
+                }
+            });
+        }
     }
 
     [HttpPost("logout")]

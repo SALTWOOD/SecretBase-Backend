@@ -5,9 +5,8 @@ namespace backend.Types.Response;
 public readonly record struct UserBriefDto(string Username, int Role);
 
 public readonly record struct AuthResponse(
-    string Message,
-    User User,
-    DateTime? Expires
+    string Status,
+    TokenRenewResponse Data
 );
 
 public readonly record struct TokenRenewResponse(

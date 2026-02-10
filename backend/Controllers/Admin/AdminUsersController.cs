@@ -21,7 +21,6 @@ public class UserAdminController(BaseServices deps) : BaseApiController(deps)
         var totalCount = await _db.Users.CountAsync();
 
         var users = await _db.Users
-            .AsNoTracking() 
             .OrderByDescending(u => u.Id)
             .Skip((page - 1) * size)
             .Take(size)

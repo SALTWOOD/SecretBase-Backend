@@ -25,17 +25,12 @@ public static class Utils
     {
         if (string.IsNullOrEmpty(code)) return null;
         Invite? invite = await db.Invites
-            .AsNoTracking()
             .FirstOrDefaultAsync(it => it.Code == code);
         
         if (doIncrement && invite != null && invite.IsValid)
         {
-            var dbInvite = await db.Invites.FindAsync(invite.Id);
-            if (dbInvite != null)
-            {
-                dbInvite.UsedCount++;
-                await db.SaveChangesAsync();
-            }
+            invite.UsedCount++;
+            await db.SaveChangesAsync();
         }
         return invite;
     }

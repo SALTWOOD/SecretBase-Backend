@@ -18,7 +18,6 @@ public class SettingService(AppDbContext db)
         }
 
         var setting = await db.Settings
-            .AsNoTracking()
             .FirstOrDefaultAsync(it => it.Key == key);
 
         if (setting == null)

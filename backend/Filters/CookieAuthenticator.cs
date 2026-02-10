@@ -38,7 +38,6 @@ public class CookieAuthenticator : AuthenticationHandler<AuthenticationSchemeOpt
             return AuthenticateResult.Fail("Invalid session data");
 
         bool isBanned = await _db.Users
-            .AsNoTracking()
             .Where(u => u.Id == userId)
             .Select(u => u.IsBanned)
             .FirstOrDefaultAsync();

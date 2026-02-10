@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using OtpNet;
 using System.Security.Cryptography;
 using System.Text;
+using static backend.Services.SessionService;
 
 namespace backend.Controllers.Auth.TwoFactor;
 
@@ -114,7 +115,26 @@ public class TotpController : BaseApiController
 
         if (!isValid) return BadRequest(new MessageResponse { Message = "Invalid verification code" });
 
-        await _twoFactor.GrantGracePeriodAsync(user.Id, Request.Cookies[Constants.AUTH_TOKEN_COOKIE_NAME]!);
+        var authToken = Request.Cookies[Constants.AUTH_TOKEN_COOKIE_NAME];
+        if (string.IsNullOrEmpty(authToken))
+        {
+            return BadRequest(new MessageResponse { Message = "Authentication token not found" });
+        }
+
+        // 获取 token 权限级别
+        var permissionLevel = await _session.GetTokenPermissionLevelAsync(authToken);
+
+        // 如果是无权限 token，升级为完全权限 token
+        if (permissionLevel == TokenPermissionLevel.None)
+        {
+            await _session.UpgradeTokenAsync(authToken);
+        }
+        // 如果已经是完全权限 token，设置 2FA 宽限期
+        else if (permissionLevel == TokenPermissionLevel.Full)
+        {
+            await _twoFactor.GrantGracePeriodAsync(user.Id, authToken);
+        }
+
         return Ok(new { message = "TOTP verified" });
     }
 }

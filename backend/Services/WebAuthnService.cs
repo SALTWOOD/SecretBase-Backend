@@ -81,14 +81,12 @@ public class WebAuthnService
     public async Task<UserCredential?> FindCredentialByIdAsync(byte[] credentialId)
     {
         return await _db.UserCredentials
-            .AsNoTracking()
             .FirstOrDefaultAsync(c => c.CredentialId == credentialId);
     }
 
     public async Task<List<UserCredential>> GetUserCredentialsAsync(int userId)
     {
         return await _db.UserCredentials
-            .AsNoTracking()
             .Where(c => c.UserId == userId)
             .OrderByDescending(c => c.Id)
             .ToListAsync();
