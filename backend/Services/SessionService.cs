@@ -48,6 +48,7 @@ public static class TokenPermissions
 
 public readonly record struct SessionData(
     int Id,
+    string Username,
     UserRole Role,
     HashSet<string> Access,
     DateTime CreatedAt,
@@ -76,6 +77,7 @@ public class SessionService
         SessionData sessionData = new SessionData
         {
             Id = user.Id,
+            Username = user.Username,
             Role = user.Role,
             Access = access,
             CreatedAt = DateTime.UtcNow,
@@ -104,6 +106,7 @@ public class SessionService
         var upgradedSession = new SessionData
         {
             Id = session.Id,
+            Username = session.Username,
             Role = session.Role,
             Access = TokenPermissions.Full,
             CreatedAt = session.CreatedAt,
@@ -144,6 +147,7 @@ public class SessionService
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, session.Id.ToString()),
+            new Claim(ClaimTypes.Name, session.Username),
             new Claim(ClaimTypes.Role, session.Role.ToString())
         };
 

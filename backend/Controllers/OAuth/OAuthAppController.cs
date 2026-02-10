@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Abstractions;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -75,6 +76,13 @@ public class OAuthAppController : ControllerBase
             return Unauthorized(new { message = "User not authenticated" });
         }
 
+        // Validate the request
+        var validationResults = request.Validate();
+        if (validationResults.Count > 0)
+        {
+            return BadRequest(new { errors = validationResults.Select(r => r.ErrorMessage) });
+        }
+
         // Generate a random client ID with prefix "sb_app_"
         var clientId = "sb_app_" + Utils.GenerateRandomSecret(16);
 
@@ -94,15 +102,6 @@ public class OAuthAppController : ControllerBase
             _ => ApplicationTypes.Web
         };
 
-        var consentType = request.ConsentType?.ToLowerInvariant() switch
-        {
-            "implicit" => ConsentTypes.Implicit,
-            "explicit" => ConsentTypes.Explicit,
-            "external" => ConsentTypes.External,
-            "systematic" => ConsentTypes.Systematic,
-            _ => ConsentTypes.Explicit
-        };
-
         var descriptor = new OpenIddictApplicationDescriptor
         {
             ClientId = clientId,
@@ -110,7 +109,7 @@ public class OAuthAppController : ControllerBase
             ClientType = clientType,
             DisplayName = request.DisplayName,
             ApplicationType = applicationType,
-            ConsentType = consentType,
+            ConsentType = ConsentTypes.Explicit,
             Permissions =
             {
                 Permissions.Endpoints.Authorization,
@@ -118,7 +117,9 @@ public class OAuthAppController : ControllerBase
                 Permissions.GrantTypes.AuthorizationCode,
                 Permissions.ResponseTypes.Code,
                 Permissions.Scopes.Email,
-                Permissions.Scopes.Profile
+                Permissions.Scopes.Profile,
+                Permissions.Prefixes.Scope + "offline_access",
+                Permissions.Prefixes.Scope + "roles"
             },
             Properties =
             {
@@ -255,6 +256,13 @@ public class OAuthAppController : ControllerBase
             return Forbid();
         }
 
+        // Validate the request
+        var validationResults = request.Validate();
+        if (validationResults.Count > 0)
+        {
+            return BadRequest(new { errors = validationResults.Select(r => r.ErrorMessage) });
+        }
+
         // Populate descriptor from existing application to preserve all properties
         var descriptor = new OpenIddictApplicationDescriptor();
         await _applicationManager.PopulateAsync(descriptor, app);
@@ -288,18 +296,6 @@ public class OAuthAppController : ControllerBase
                 "web" => ApplicationTypes.Web,
                 "native" => ApplicationTypes.Native,
                 _ => ApplicationTypes.Web
-            };
-        }
-
-        if (request.ConsentType is not null)
-        {
-            descriptor.ConsentType = request.ConsentType.ToLowerInvariant() switch
-            {
-                "implicit" => ConsentTypes.Implicit,
-                "explicit" => ConsentTypes.Explicit,
-                "external" => ConsentTypes.External,
-                "systematic" => ConsentTypes.Systematic,
-                _ => ConsentTypes.Explicit
             };
         }
 
@@ -359,6 +355,13 @@ public class OAuthAppController : ControllerBase
             return Forbid();
         }
 
+        // Validate the request
+        var validationResults = request.Validate();
+        if (validationResults.Count > 0)
+        {
+            return BadRequest(new { errors = validationResults.Select(r => r.ErrorMessage) });
+        }
+
         // Populate descriptor from existing application to preserve all properties
         var descriptor = new OpenIddictApplicationDescriptor();
         await _applicationManager.PopulateAsync(descriptor, app);
@@ -395,18 +398,6 @@ public class OAuthAppController : ControllerBase
                 "web" => ApplicationTypes.Web,
                 "native" => ApplicationTypes.Native,
                 _ => ApplicationTypes.Web
-            };
-        }
-
-        if (request.ConsentType is not null)
-        {
-            descriptor.ConsentType = request.ConsentType.ToLowerInvariant() switch
-            {
-                "implicit" => ConsentTypes.Implicit,
-                "explicit" => ConsentTypes.Explicit,
-                "external" => ConsentTypes.External,
-                "systematic" => ConsentTypes.Systematic,
-                _ => ConsentTypes.Explicit
             };
         }
 

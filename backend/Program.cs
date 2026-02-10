@@ -3,10 +3,12 @@ using backend.Controllers;
 using backend.Database;
 using backend.Database.Entities;
 using backend.Filters;
+using backend.Middleware;
 using backend.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using OpenIddict.Abstractions;
 using StackExchange.Redis;
 using System;
 using System.Threading.RateLimiting;
@@ -88,6 +90,19 @@ builder.Services.AddRateLimiter(options =>
             PermitLimit = 60
         });
     });
+
+    // Add a stricter rate limit policy for OAuth token endpoint
+    options.AddPolicy("TokenEndpoint", context =>
+    {
+        var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
+        {
+            Window = TimeSpan.FromMinutes(1),
+            PermitLimit = 20, // Stricter limit for token endpoint
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit = 5
+        });
+    });
 });
 #endregion
 
@@ -101,16 +116,52 @@ builder.Services.AddOpenIddict()
     .AddServer(options =>
     {
         options.SetAuthorizationEndpointUris("/connect/authorize")
-               .SetTokenEndpointUris("/connect/token");
+               .SetTokenEndpointUris("/connect/token")
+               .SetIntrospectionEndpointUris("/connect/introspect")
+               .SetRevocationEndpointUris("/connect/revoke");
 
+        // Enable authorization code flow with PKCE support
         options.AllowAuthorizationCodeFlow();
 
-        options.AddDevelopmentEncryptionCertificate()
-               .AddDevelopmentSigningCertificate();
+        // Enable refresh token flow
+        options.AllowRefreshTokenFlow();
+        options.DisableAccessTokenEncryption();
 
+        // Configure token lifetimes
+        options.SetAuthorizationCodeLifetime(TimeSpan.FromMinutes(5))
+               .SetAccessTokenLifetime(TimeSpan.FromMinutes(60))
+               .SetRefreshTokenLifetime(TimeSpan.FromDays(30));
+
+        // Register standard scopes
+        options.RegisterScopes(
+            OpenIddictConstants.Permissions.Scopes.Email,
+            OpenIddictConstants.Permissions.Scopes.Profile,
+            OpenIddictConstants.Permissions.Prefixes.Scope + "offline_access"
+        );
+
+        // Register custom scopes
+        options.RegisterScopes(
+            "roles",
+            "apps",
+            "consents",
+            "tokens",
+            "settings:read",
+            "settings:write",
+            "invites:read",
+            "invites:write"
+        );
+
+        // Add development certificates (use production certificates in production!)
+        options.AddDevelopmentEncryptionCertificate()
+               .AddDevelopmentSigningCertificate()
+               .SetIssuer(builder.Configuration["OpenIddict:Issuer"].ThrowIfNull());
+
+        // Configure ASP.NET Core integration
         options.UseAspNetCore()
+               .DisableTransportSecurityRequirement()
                .EnableTokenEndpointPassthrough()
-               .EnableAuthorizationEndpointPassthrough();
+               .EnableAuthorizationEndpointPassthrough()
+               .EnableStatusCodePagesIntegration();
     });
 #endregion
 
@@ -120,6 +171,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseRequestLogging();
 }
 
 app.UseRateLimiter();

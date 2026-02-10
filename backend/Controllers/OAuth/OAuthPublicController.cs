@@ -1,6 +1,8 @@
 ﻿namespace backend.Controllers.OAuth;
 
+using backend;
 using backend.Types.Response;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Abstractions;
 
@@ -18,6 +20,7 @@ public class OAuthPublicController : ControllerBase
     }
 
     [HttpGet("app-info")]
+    [Authorize]
     [ProducesResponseType<OAuthAppResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAppInfo(string clientId)
