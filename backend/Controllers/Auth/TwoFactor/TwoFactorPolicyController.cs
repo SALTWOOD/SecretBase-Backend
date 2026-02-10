@@ -39,8 +39,8 @@ public class TwoFactorPolicyController : BaseApiController
 
     [HttpPost("enable")]
     [Authorize]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> EnableForce2Fa()
     {
         var user = await CurrentUser;
@@ -70,6 +70,8 @@ public class TwoFactorPolicyController : BaseApiController
 
     [Require2FA]
     [HttpPost("disable")]
+    [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> DisableForce2Fa()
     {
         var user = await CurrentUser;

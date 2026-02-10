@@ -14,6 +14,7 @@ namespace backend.Controllers.Admin;
 public class UserAdminController(BaseServices deps) : BaseApiController(deps)
 {
     [HttpGet]
+    [ProducesResponseType(typeof(List<User>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<User>>> GetUsers([FromQuery] int page = 1, [FromQuery] int size = 20)
     {
         page = Math.Max(1, page);
@@ -33,6 +34,10 @@ public class UserAdminController(BaseServices deps) : BaseApiController(deps)
     }
 
     [HttpPut("{id:int}/status")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateUserStatus(int id, [FromBody] bool isBanned)
     {
         // 获取当前用户信息
