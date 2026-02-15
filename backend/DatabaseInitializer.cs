@@ -33,7 +33,7 @@ public class DatabaseInitializer
                 Username = "admin",
                 Email = "admin@example.com",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
-                Role = UserRole.Admin,
+                Role = UserRole.Owner,
             };
             await db.Users.AddAsync(admin);
             await db.SaveChangesAsync();
