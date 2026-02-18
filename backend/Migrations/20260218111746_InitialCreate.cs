@@ -128,6 +128,55 @@ namespace backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "articles",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Title = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Content = table.Column<string>(type: "character varying(10000)", maxLength: 10000, nullable: false),
+                    AuthorId = table.Column<int>(type: "integer", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamptz", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamptz", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    IsPublished = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_articles", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "comments",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Content = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
+                    ArticleId = table.Column<int>(type: "integer", nullable: false),
+                    AuthorId = table.Column<int>(type: "integer", nullable: false),
+                    ParentCommentId = table.Column<int>(type: "integer", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamptz", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamptz", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    IsDeleted = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_comments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_comments_articles_ArticleId",
+                        column: x => x.ArticleId,
+                        principalTable: "articles",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_comments_comments_ParentCommentId",
+                        column: x => x.ParentCommentId,
+                        principalTable: "comments",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "invites",
                 columns: table => new
                 {
@@ -199,6 +248,46 @@ namespace backend.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_articles_AuthorId",
+                table: "articles",
+                column: "AuthorId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_articles_CreatedAt",
+                table: "articles",
+                column: "CreatedAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_articles_IsPublished",
+                table: "articles",
+                column: "IsPublished");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_comments_ArticleId",
+                table: "comments",
+                column: "ArticleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_comments_AuthorId",
+                table: "comments",
+                column: "AuthorId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_comments_CreatedAt",
+                table: "comments",
+                column: "CreatedAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_comments_IsDeleted",
+                table: "comments",
+                column: "IsDeleted");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_comments_ParentCommentId",
+                table: "comments",
+                column: "ParentCommentId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_invites_CreatorId",
@@ -273,6 +362,22 @@ namespace backend.Migrations
                 unique: true);
 
             migrationBuilder.AddForeignKey(
+                name: "FK_articles_users_AuthorId",
+                table: "articles",
+                column: "AuthorId",
+                principalTable: "users",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Cascade);
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_comments_users_AuthorId",
+                table: "comments",
+                column: "AuthorId",
+                principalTable: "users",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Cascade);
+
+            migrationBuilder.AddForeignKey(
                 name: "FK_invites_users_CreatorId",
                 table: "invites",
                 column: "CreatorId",
@@ -289,6 +394,9 @@ namespace backend.Migrations
                 table: "invites");
 
             migrationBuilder.DropTable(
+                name: "comments");
+
+            migrationBuilder.DropTable(
                 name: "OpenIddictScopes");
 
             migrationBuilder.DropTable(
@@ -299,6 +407,9 @@ namespace backend.Migrations
 
             migrationBuilder.DropTable(
                 name: "user_credentials");
+
+            migrationBuilder.DropTable(
+                name: "articles");
 
             migrationBuilder.DropTable(
                 name: "OpenIddictAuthorizations");
