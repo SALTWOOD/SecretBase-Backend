@@ -14,7 +14,17 @@ public class DatabaseInitializer
             { "site.security.cookie.auto_renew", true },
             { "site.security.cookie.expire_hours", 72 },
             { "site.user.registration.enabled", true },
-            { "site.user.registration.force_invitation", false }
+            { "site.user.registration.force_invitation", false },
+
+            // SEO Default Values
+            { SettingKeys.Site.Seo.Title, "默认站点" },
+            { SettingKeys.Site.Seo.Description, "基于 ASP.NET Core 与 Nuxt 4 强力驱动的站点" },
+            { SettingKeys.Site.Seo.Keywords, "blog, dotnet, nuxt, site" },
+            { SettingKeys.Site.Seo.OgTitle, "Default Website" },
+            { SettingKeys.Site.Seo.OgDescription, "基于 ASP.NET Core 与 Nuxt 4 强力驱动的站点" },
+            { SettingKeys.Site.Seo.OgImage, "/default-og-image.png" },
+            { SettingKeys.Site.Seo.TwitterCard, "summary_large_image" },
+            { SettingKeys.Site.Seo.Robots, "index, follow" }
         };
 
         foreach (var item in defaultSettings)

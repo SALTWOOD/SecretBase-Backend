@@ -13,6 +13,8 @@ public class AppDbContext : DbContext
     public DbSet<Invite> Invites => Set<Invite>();
     public DbSet<Setting> Settings => Set<Setting>();
     public DbSet<UserCredential> UserCredentials => Set<UserCredential>();
+    public DbSet<Article> Articles => Set<Article>();
+    public DbSet<Comment> Comments => Set<Comment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

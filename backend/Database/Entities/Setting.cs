@@ -88,6 +88,19 @@ public static class SettingKeys
     {
         public const string Prefix = "site.";
 
+        public static class Seo
+        {
+            public const string Prefix = Site.Prefix + "seo.";
+            public const string Title = Prefix + "title";
+            public const string Description = Prefix + "description";
+            public const string Keywords = Prefix + "keywords";
+            public const string OgTitle = Prefix + "og_title";
+            public const string OgDescription = Prefix + "og_description";
+            public const string OgImage = Prefix + "og_image";
+            public const string TwitterCard = Prefix + "twitter_card";
+            public const string Robots = Prefix + "robots";
+        }
+
         public static class Security
         {
             public const string Prefix = Site.Prefix + "security.";

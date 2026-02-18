@@ -56,8 +56,7 @@ public class SettingService(AppDbContext db)
     public async Task<bool> Exists(string key)
     {
         if (_cache.ContainsKey(key)) return true;
-        var val = await Get<object>(key);
-        return val != null;
+        return await db.Settings.AnyAsync(it => it.Key == key);
     }
 
     public async Task Delete(string key)
