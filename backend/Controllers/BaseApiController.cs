@@ -31,7 +31,7 @@ public class BaseApiController(BaseServices deps) : ControllerBase
         Response.Cookies.Append(Constants.AUTH_TOKEN_COOKIE_NAME, token, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = Request.IsHttps,
             SameSite = SameSiteMode.Lax,
             Expires = DateTimeOffset.UtcNow.AddHours(hours),
             Path = "/"

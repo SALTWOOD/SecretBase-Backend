@@ -81,7 +81,7 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
         CookieOptions options = new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = Request.IsHttps,
             SameSite = SameSiteMode.Lax,
             Path = "/"
         };
