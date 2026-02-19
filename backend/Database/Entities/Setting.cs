@@ -124,5 +124,29 @@ public static class SettingKeys
                 public const string ForceInvitation = Prefix + "force_invitation";
             }
         }
+
+        public static class Home
+        {
+            public const string Prefix = Site.Prefix + "home.";
+
+            public static class Background
+            {
+                public const string Prefix = Home.Prefix + "background.";
+                public const string Url = Prefix + "url";
+                public const string Blur = Prefix + "blur"; // 虚化度
+                public const string Opacity = Prefix + "opacity"; // 透明度
+            }
+
+            public static class Banner
+            {
+                public const string Prefix = Home.Prefix + "banner.";
+                public const string Content = Prefix + "content"; // 文字内容
+
+                /// <summary>
+                /// Display mode: full | mini | screen | hidden
+                /// </summary>
+                public const string DisplayMode = Prefix + "display_mode";
+            }
+        }
     }
 }

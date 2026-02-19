@@ -31,6 +31,19 @@ public class SettingService(AppDbContext db)
         return setting.GetValue<T>();
     }
 
+    public object? GetRawValue(Setting setting)
+    {
+        return setting.Type switch
+        {
+            SettingType.String => setting.GetValue<string>(),
+            SettingType.Number => setting.GetValue<double>(),
+            SettingType.Boolean => setting.GetValue<bool>(),
+            SettingType.Json => setting.GetValue<object>(),
+            SettingType.Null => null,
+            _ => null
+        };
+    }
+
     public async Task Set<T>(string key, T? value)
     {
         var setting = new Setting { Key = key };
@@ -69,5 +82,53 @@ public class SettingService(AppDbContext db)
         }
 
         _cache.TryRemove(key, out _);
+    }
+
+    public async Task<Dictionary<string, object?>> GetBatch(IEnumerable<string> keys)
+    {
+        var result = new Dictionary<string, object?>();
+        var keysToFetch = new List<string>();
+
+        // 1. Try to get from cache first
+        foreach (var key in keys)
+        {
+            if (_cache.TryGetValue(key, out var cached))
+            {
+                // If cached as Null, we treat it as null/default
+                result[key] = (cached == null || cached.Type == SettingType.Null)
+                    ? null
+                    : cached.GetValue<object>();
+            }
+            else
+            {
+                keysToFetch.Add(key);
+            }
+        }
+
+        // 2. Fetch missing keys from Database in one shot
+        if (keysToFetch.Count != 0)
+        {
+            var settingsFromDb = await db.Settings
+                .Where(it => keysToFetch.Contains(it.Key))
+                .ToListAsync();
+
+            var dbResultMap = settingsFromDb.ToDictionary(s => s.Key);
+
+            foreach (var key in keysToFetch)
+            {
+                if (dbResultMap.TryGetValue(key, out var setting))
+                {
+                    _cache[key] = setting;
+                    result[key] = GetRawValue(setting);
+                }
+                else
+                {
+                    _cache[key] = new Setting { Key = key, Type = SettingType.Null };
+                    result[key] = null;
+                }
+            }
+        }
+
+        return result;
     }
 }

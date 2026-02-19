@@ -9,12 +9,15 @@ public class DatabaseInitializer
 {
     public static async Task InitializeAsync(AppDbContext db, SettingService settingService)
     {
-        var defaultSettings = new Dictionary<string, object>
+        var defaultSettings = new Dictionary<string, object?>
         {
-            { "site.security.cookie.auto_renew", true },
-            { "site.security.cookie.expire_hours", 72 },
-            { "site.user.registration.enabled", true },
-            { "site.user.registration.force_invitation", false },
+            // Cookie
+            { SettingKeys.Site.Security.Cookie.AutoRenew, true },
+            { SettingKeys.Site.Security.Cookie.ExpireHours, 72 },
+
+            // Registration
+            { SettingKeys.Site.User.Registration.Enabled, true },
+            { SettingKeys.Site.User.Registration.ForceInvitation, false },
 
             // SEO Default Values
             { SettingKeys.Site.Seo.Title, "默认站点" },
@@ -24,7 +27,16 @@ public class DatabaseInitializer
             { SettingKeys.Site.Seo.OgDescription, "基于 ASP.NET Core 与 Nuxt 4 强力驱动的站点" },
             { SettingKeys.Site.Seo.OgImage, "/default-og-image.png" },
             { SettingKeys.Site.Seo.TwitterCard, "summary_large_image" },
-            { SettingKeys.Site.Seo.Robots, "index, follow" }
+            { SettingKeys.Site.Seo.Robots, "index, follow" },
+
+            // Background Settings
+            { SettingKeys.Site.Home.Background.Url, null },
+            { SettingKeys.Site.Home.Background.Blur, 0 },      // 默认不虚化
+            { SettingKeys.Site.Home.Background.Opacity, 1.0 }, // 默认不透明
+
+            // Banner Settings
+            { SettingKeys.Site.Home.Banner.Content, "Welcome to My Site" },
+            { SettingKeys.Site.Home.Banner.DisplayMode, "full" } // 默认为全屏高度
         };
 
         foreach (var item in defaultSettings)
