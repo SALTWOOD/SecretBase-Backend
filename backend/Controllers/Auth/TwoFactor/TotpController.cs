@@ -38,6 +38,7 @@ public class TotpController : BaseApiController
     public async Task<IActionResult> Setup()
     {
         var user = await CurrentUser;
+        if (user == null) return Unauthorized();
 
         var secretBytes = KeyGeneration.GenerateRandomKey(20);
         var secretBase32 = Base32Encoding.ToString(secretBytes);
@@ -73,6 +74,7 @@ public class TotpController : BaseApiController
     public async Task<IActionResult> Enable([FromBody] TotpVerifyRequest request)
     {
         var user = await CurrentUser;
+        if (user == null) return Unauthorized();
         var tempSecret = await _redis.StringGetAsync($"{PREFIX}:{user.Id}");
         if (tempSecret.IsNullOrEmpty) return BadRequest(new MessageResponse { Message = "Setup session expired" });
 
@@ -97,6 +99,7 @@ public class TotpController : BaseApiController
     public async Task<IActionResult> Disable()
     {
         var user = await CurrentUser;
+        if (user == null) return Unauthorized();
         if (user.TotpSecret == null) return BadRequest(new MessageResponse { Message = "TOTP has not been set up yet" });
         user.TotpSecret = null;
         await _db.SaveChangesAsync();
@@ -109,7 +112,8 @@ public class TotpController : BaseApiController
     [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Verify([FromBody] TotpVerifyRequest request)
     {
-        User user = await CurrentUser;
+        var user = await CurrentUser;
+        if (user == null) return Unauthorized();
         string? savedSecret = user.TotpSecret;
 
         if (string.IsNullOrEmpty(savedSecret)) return BadRequest(new MessageResponse { Message = "TOTP has not been set up" });

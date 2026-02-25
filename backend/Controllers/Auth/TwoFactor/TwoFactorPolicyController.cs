@@ -30,6 +30,7 @@ public class TwoFactorPolicyController : BaseApiController
     public async Task<IActionResult> GetPolicy()
     {
         var user = await CurrentUser;
+        if (user == null) return Unauthorized();
         return Ok(new TwoFactorPolicyResponse
         {
             Totp = new TwoFactorStatus(!string.IsNullOrEmpty(user.TotpSecret)),
@@ -44,6 +45,7 @@ public class TwoFactorPolicyController : BaseApiController
     public async Task<IActionResult> EnableForce2Fa()
     {
         var user = await CurrentUser;
+        if (user == null) return Unauthorized();
 
         bool is2faReady = !string.IsNullOrEmpty(user.TotpSecret);
         if (!is2faReady) is2faReady = await _db.UserCredentials.AnyAsync(it => it.UserId == user.Id);
@@ -75,6 +77,7 @@ public class TwoFactorPolicyController : BaseApiController
     public async Task<IActionResult> DisableForce2Fa()
     {
         var user = await CurrentUser;
+        if (user == null) return Unauthorized();
 
         if (!user.ForceTwoFactor)
         {

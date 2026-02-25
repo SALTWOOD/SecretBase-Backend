@@ -26,15 +26,17 @@ public class Setting
         Type targetType = typeof(T);
         Type underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
 
-        if (Type == SettingType.Json || (!underlyingType.IsPrimitive && underlyingType != typeof(string)))
+        if (underlyingType == typeof(object) || underlyingType == typeof(string))
         {
-            return JsonSerializer.Deserialize<T>(Value);
+            if (Type == SettingType.String || Type == SettingType.Null)
+            {
+                return (T?)(object?)Value;
+            }
         }
 
-        if (underlyingType.IsEnum)
-        {
-            return (T)Enum.Parse(underlyingType, Value);
-        }
+        if (Type == SettingType.Json) return JsonSerializer.Deserialize<T>(Value);
+
+        if (underlyingType.IsEnum) return (T)Enum.Parse(underlyingType, Value);
 
         return (T)Convert.ChangeType(Value, underlyingType, System.Globalization.CultureInfo.InvariantCulture);
     }

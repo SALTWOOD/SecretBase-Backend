@@ -41,6 +41,7 @@ public class WebAuthnController : BaseApiController
     public async Task<IActionResult> GetRegisterOptions()
     {
         var user = await CurrentUser;
+        if (user == null) return Unauthorized();
         var options = _service.GetRegistrationOptions(user.Id, user.Username);
 
         var cacheKey = $"{REG_PREFIX}:{Base64UrlTextEncoder.Encode(options.Challenge)}";
