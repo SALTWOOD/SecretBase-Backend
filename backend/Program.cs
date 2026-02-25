@@ -81,13 +81,34 @@ builder.Services.AddFido2(options =>
 
 #region Auth & Rate Limiter
 builder.Services.AddSingleton<IAuthorizationHandler, MinimumRoleHandler>();
+
+// 配置双认证方案：Cookie Session + OAuth Bearer
 builder.Services.AddAuthentication("SimpleSession")
-    .AddScheme<AuthenticationSchemeOptions, CookieAuthenticator>("SimpleSession", null);
+    .AddScheme<AuthenticationSchemeOptions, CookieAuthenticator>("SimpleSession", null)
+    .AddScheme<AuthenticationSchemeOptions, OAuthBearerAuthenticator>(OAuthBearerAuthenticator.SchemeName, null);
 
 builder.Services.AddAuthorization(options =>
 {
+    // 默认策略：支持任一认证方式
+    options.DefaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+        .AddAuthenticationSchemes("SimpleSession", OAuthBearerAuthenticator.SchemeName)
+        .RequireAuthenticatedUser()
+        .Build();
+
+    // CookieOnly 策略：仅限 Cookie Session 认证（用于敏感操作）
+    options.AddPolicy("CookieOnly", policy =>
+        policy.AddAuthenticationSchemes("SimpleSession")
+              .RequireAuthenticatedUser());
+
+    // OAuthOnly 策略：仅限 OAuth Bearer 认证
+    options.AddPolicy("OAuthOnly", policy =>
+        policy.AddAuthenticationSchemes(OAuthBearerAuthenticator.SchemeName)
+              .RequireAuthenticatedUser());
+
+    // AdminOnly 策略：需要 Admin 角色（仅 Cookie Session）
     options.AddPolicy("AdminOnly", policy =>
-        policy.AddRequirements(new MinimumRoleRequirement(UserRole.Admin)));
+        policy.AddAuthenticationSchemes("SimpleSession")
+              .AddRequirements(new MinimumRoleRequirement(UserRole.Admin)));
 });
 
 builder.Services.AddRateLimiter(options =>
