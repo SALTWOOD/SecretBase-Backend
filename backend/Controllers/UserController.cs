@@ -13,6 +13,7 @@ namespace backend.Controllers;
 public class UserController(BaseServices deps) : BaseApiController(deps)
 {
     [Authorize]
+    [ScopeRequired(OAuthScopes.Profile)]
     [HttpGet("profile")]
     [ProducesResponseType(typeof(User), StatusCodes.Status200OK)]
     public async Task<IActionResult> Profile()
@@ -20,7 +21,7 @@ public class UserController(BaseServices deps) : BaseApiController(deps)
         return Ok(await CurrentUser);
     }
 
-    [Authorize]
+    [Authorize(Policy = "CookieOnly")]  // 密码修改仅限 Cookie Session
     [HttpPost("profile")]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status400BadRequest)]

@@ -8,9 +8,9 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace backend.Controllers.OAuth;
 
-[Authorize]
+[Authorize(Policy = "CookieOnly")]
 [ApiController]
-[Route("oauth/apps")]
+[Route("user/oauth")]
 [Produces("application/json")]
 public class OAuthAppController : ControllerBase
 {
@@ -25,7 +25,7 @@ public class OAuthAppController : ControllerBase
         _logger = logger;
     }
 
-    [HttpGet]
+    [HttpGet("apps")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<OAuthAppResponse>))]
     public async Task<ActionResult<IEnumerable<OAuthAppResponse>>> GetMyApps()
     {
@@ -65,7 +65,7 @@ public class OAuthAppController : ControllerBase
         return Ok(apps);
     }
 
-    [HttpPost]
+    [HttpPost("app")]
     [ProducesResponseType<CreateAppResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<CreateAppResponse>> Create([FromBody] CreateAppRequest request)
@@ -157,7 +157,7 @@ public class OAuthAppController : ControllerBase
         }
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("app/{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -186,7 +186,7 @@ public class OAuthAppController : ControllerBase
         return NoContent();
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("app/{id}")]
     [ProducesResponseType<OAuthAppDetailResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -232,7 +232,7 @@ public class OAuthAppController : ControllerBase
         return Ok(response);
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("app/{id}")]
     [ProducesResponseType<OAuthAppResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -331,7 +331,7 @@ public class OAuthAppController : ControllerBase
         }
     }
 
-    [HttpPatch("{id}")]
+    [HttpPatch("app/{id}")]
     [ProducesResponseType<OAuthAppResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -433,7 +433,7 @@ public class OAuthAppController : ControllerBase
         }
     }
 
-    [HttpPost("{id}/secret")]
+    [HttpPost("app/{id}/reset-secret")]
     [ProducesResponseType<NewSecretResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

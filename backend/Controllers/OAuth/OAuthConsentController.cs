@@ -8,9 +8,9 @@ using OpenIddict.Abstractions;
 /// <summary>
 /// Controller for managing user OAuth consents/authorizations
 /// </summary>
-[Authorize]
+[Authorize(Policy = "CookieOnly")]
 [ApiController]
-[Route("oauth/consents")]
+[Route("user/oauth")]
 [Produces("application/json")]
 public class OAuthConsentController : ControllerBase
 {
@@ -34,7 +34,7 @@ public class OAuthConsentController : ControllerBase
     /// <summary>
     /// Get all OAuth consents for the current user
     /// </summary>
-    [HttpGet]
+    [HttpGet("authorizations")]
     [ProducesResponseType<IEnumerable<OAuthConsentResponse>>(StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<OAuthConsentResponse>>> GetMyConsents()
     {
@@ -80,11 +80,11 @@ public class OAuthConsentController : ControllerBase
     /// <summary>
     /// Revoke a specific OAuth consent
     /// </summary>
-    [HttpDelete("{id}")]
+    [HttpDelete("authorization/{clientId}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> RevokeConsent(string id)
+    public async Task<IActionResult> RevokeConsent(string clientId)
     {
         var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(currentUserId))
@@ -92,24 +92,27 @@ public class OAuthConsentController : ControllerBase
             return Unauthorized(new { message = "User not authenticated" });
         }
 
-        var authorization = await _authorizationManager.FindByIdAsync(id);
-        if (authorization is null)
+        // Find application by client_id
+        var application = await _applicationManager.FindByClientIdAsync(clientId);
+        if (application is null)
         {
-            return NotFound(new { message = "Consent not found" });
+            return NotFound(new { message = "Application not found" });
         }
 
-        // Check if this authorization belongs to the current user
-        var subject = await _authorizationManager.GetSubjectAsync(authorization);
-        if (subject != currentUserId)
+        var applicationId = await _applicationManager.GetIdAsync(application);
+
+        // Find authorization for this user and application
+        await foreach (var authorization in _authorizationManager.FindAsync(
+            subject: currentUserId,
+            client: applicationId,
+            status: OpenIddictConstants.Statuses.Valid,
+            type: OpenIddictConstants.AuthorizationTypes.Permanent,
+            scopes: null))
         {
-            _logger.LogWarning("User {CurrentUserId} attempted to revoke consent {ConsentId} owned by {Subject}", currentUserId, id, subject);
-            return Forbid();
+            // Revoke the authorization
+            await _authorizationManager.TryRevokeAsync(authorization);
+            _logger.LogInformation("OAuth consent for client {ClientId} revoked by user {UserId}", clientId, currentUserId);
         }
-
-        // Revoke the authorization
-        await _authorizationManager.TryRevokeAsync(authorization);
-
-        _logger.LogInformation("OAuth consent {ConsentId} revoked by user {UserId}", id, currentUserId);
 
         return NoContent();
     }

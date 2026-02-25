@@ -19,10 +19,10 @@ using System.Text.Json;
 
 /// <summary>
 /// OAuth 2.0 授权端点控制器
-/// 路由: /api/v1/oauth2/*
+/// 路由: /oauth2/*
 /// </summary>
 [ApiController]
-[Route("api/v1/oauth2")]
+[Route("oauth2")]
 public class OAuth2Controller : ControllerBase
 {
     private readonly IOpenIddictApplicationManager _applicationManager;
