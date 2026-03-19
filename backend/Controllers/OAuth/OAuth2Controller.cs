@@ -55,39 +55,12 @@ public class OAuth2Controller : ControllerBase
     [ProducesResponseType<OAuth2AuthorizeResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<OAuth2ErrorResponse>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Authorize([FromQuery] OAuth2AuthorizeRequest request)
+    public async Task<IActionResult> Authorize()
     {
-        // 1. 验证 response_type
-        if (request.ResponseType != "code")
-        {
-            return BadRequest(new OAuth2ErrorResponse
-            {
-                Error = "unsupported_response_type",
-                ErrorDescription = "Only 'code' response type is supported"
-            });
-        }
+        var request = HttpContext.GetOpenIddictServerRequest();
 
-        // 2. 验证 client_id
+        // 获取应用信息（直接用 request.ClientId，中间件保证了它一定存在且有效）
         var application = await _applicationManager.FindByClientIdAsync(request.ClientId);
-        if (application == null)
-        {
-            return BadRequest(new OAuth2ErrorResponse
-            {
-                Error = "invalid_client",
-                ErrorDescription = "Client not found"
-            });
-        }
-
-        // 3. 验证 redirect_uri 在白名单中
-        var redirectUris = await _applicationManager.GetRedirectUrisAsync(application);
-        if (!redirectUris.Any(u => u.ToString().Equals(request.RedirectUri, StringComparison.OrdinalIgnoreCase)))
-        {
-            return BadRequest(new OAuth2ErrorResponse
-            {
-                Error = "invalid_request",
-                ErrorDescription = "Invalid redirect_uri"
-            });
-        }
 
         // 4. 获取当前用户信息
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -160,9 +133,14 @@ public class OAuth2Controller : ControllerBase
     [Authorize(Policy = "CookieOnly")]
     [ProducesResponseType<OAuth2ApproveResultResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Approve([FromBody] OAuth2ApproveRequest request)
+    [IgnoreAntiforgeryToken]
+    public async Task<IActionResult> Approve()
     {
-        // 获取当前用户
+        // 1. 获取 OpenIddict 自动从上下文（URL 或 Body）解析的请求
+        // 注意：前端发起 POST 时，必须带上原始的 QueryString（包含 client_id, response_type 等）
+        var request = HttpContext.GetOpenIddictServerRequest();
+
+        // 2. 获取当前用户
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
         {
@@ -175,95 +153,44 @@ public class OAuth2Controller : ControllerBase
             return Unauthorized();
         }
 
-        // 验证 client_id
+        // 3. 验证 Client（实际上能进到这里说明 client_id 基本合法，但为了获取实体对象可以复用逻辑）
         var application = await _applicationManager.FindByClientIdAsync(request.ClientId);
-        if (application == null)
-        {
-            return Ok(new OAuth2ApproveResultResponse
-            {
-                Success = false,
-                Error = "invalid_client",
-                ErrorDescription = "Client not found"
-            });
-        }
 
-        // 验证 redirect_uri
-        var redirectUris = await _applicationManager.GetRedirectUrisAsync(application);
-        if (!redirectUris.Any(u => u.ToString().Equals(request.RedirectUri, StringComparison.OrdinalIgnoreCase)))
-        {
-            return Ok(new OAuth2ApproveResultResponse
-            {
-                Success = false,
-                Error = "invalid_request",
-                ErrorDescription = "Invalid redirect_uri"
-            });
-        }
+        // 4. 用户同意授权后的 Scopes 处理
+        // 建议直接使用 request.GetScopes()，这是中间件解析后的标准集合
+        var requestedScopes = request.GetScopes();
 
-        // 构建重定向 URL
-        var redirectUrl = request.RedirectUri;
-
-        // 用户拒绝授权
-        if (!request.Approved)
-        {
-            _logger.LogInformation("User {UserId} denied authorization for client {ClientId}", userId, request.ClientId);
-            var deniedUrl = redirectUrl + (redirectUrl.Contains('?') ? "&" : "?") + 
-                "error=access_denied&error_description=User denied access";
-            if (!string.IsNullOrEmpty(request.State))
-            {
-                deniedUrl += "&state=" + Uri.EscapeDataString(request.State);
-            }
-            return Ok(new OAuth2ApproveResultResponse
-            {
-                Success = true,
-                RedirectUrl = deniedUrl
-            });
-        }
-
-        // 用户同意授权
-        var scopes = string.IsNullOrEmpty(request.Scope)
-            ? new[] { OAuthScopes.Profile }
-            : request.Scope.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-        // 创建 ClaimsPrincipal
+        // 5. 创建 ClaimsPrincipal
         var claims = new List<Claim>
         {
             new Claim(OpenIddictConstants.Claims.Subject, userId.ToString()),
             new Claim(OpenIddictConstants.Claims.Email, user.Email ?? ""),
             new Claim(OpenIddictConstants.Claims.Name, user.Username ?? ""),
-            new Claim(OAuthScopes.Roles, user.Role.ToString())
+            // 使用标准声明名，例如 Roles
+            new Claim(OpenIddictConstants.Claims.Role, user.Role.ToString())
         };
 
         var identity = new ClaimsIdentity(claims, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);
 
-        // 设置 scopes
-        principal.SetScopes(scopes);
-
-        // 为每个 claim 设置目标
+        // 设置 Scopes 与目的地
+        principal.SetScopes(requestedScopes);
         foreach (var claim in principal.Claims)
         {
             claim.SetDestinations(GetDestinations(claim, principal));
         }
 
-        // 创建授权
+        // 6. 自动关联或创建授权记录 (可选，取决于你的 Consent 策略)
         var appId = await _applicationManager.GetIdAsync(application);
-        var authorization = await CreateAuthorizationAsync(userId, appId!, scopes);
-
+        var authorization = await CreateAuthorizationAsync(userId, appId!, requestedScopes.ToArray());
         principal.SetAuthorizationId(await _authorizationManager.GetIdAsync(authorization));
 
-        // 生成授权码
-        var result = SignIn(principal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+        _logger.LogInformation("User {UserId} approved {ClientId}喵~", userId, request.ClientId);
 
-        _logger.LogInformation("User {UserId} authorized client {ClientId} with scopes {Scopes}", 
-            userId, request.ClientId, string.Join(", ", scopes));
-
-        // 返回成功，前端需要从响应中获取 code
-        return Ok(new OAuth2ApproveResultResponse
-        {
-            Success = true,
-            // 实际的 code 会通过 OpenIddict 生成
-            RedirectUrl = null // 前端需要自己构建重定向 URL
-        });
+        // 7. 关键修正：返回 SignIn 结果
+        // 在 Passthrough 模式下，SignIn 会生成一个包含 authorization_code 的 302 重定向
+        // 如果你的 Vue 前端使用 axios 调用，它会尝试跟随这个重定向，导致跨域或数据丢失。
+        return SignIn(principal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
 
     /// <summary>
@@ -366,11 +293,11 @@ public class OAuth2Controller : ControllerBase
     {
         // 查找现有授权
         await foreach (var auth in _authorizationManager.FindAsync(
-            subject: userId.ToString(),
-            client: applicationId,
-            status: OpenIddictConstants.Statuses.Valid,
-            type: OpenIddictConstants.AuthorizationTypes.Permanent,
-            scopes: scopes.ToImmutableArray()))
+                           subject: userId.ToString(),
+                           client: applicationId,
+                           status: OpenIddictConstants.Statuses.Valid,
+                           type: OpenIddictConstants.AuthorizationTypes.Permanent,
+                           scopes: scopes.ToImmutableArray()))
         {
             return auth;
         }
@@ -404,7 +331,7 @@ public class OAuth2Controller : ControllerBase
 
         // 使用 OpenIddict 验证授权码
         var authResult = await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
-        
+
         if (authResult?.Principal == null)
         {
             return BadRequest(new OAuth2ErrorResponse
@@ -452,7 +379,7 @@ public class OAuth2Controller : ControllerBase
             claim.SetDestinations(GetDestinations(claim, authResult.Principal));
         }
 
-        _logger.LogInformation("Access token issued for user {UserId} to client {ClientId}", 
+        _logger.LogInformation("Access token issued for user {UserId} to client {ClientId}",
             userId, request.ClientId);
 
         // 返回令牌
@@ -472,7 +399,7 @@ public class OAuth2Controller : ControllerBase
 
         // 使用 OpenIddict 验证刷新令牌
         var authResult = await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
-        
+
         if (authResult?.Principal == null)
         {
             return BadRequest(new OAuth2ErrorResponse
@@ -509,7 +436,7 @@ public class OAuth2Controller : ControllerBase
             claim.SetDestinations(GetDestinations(claim, authResult.Principal));
         }
 
-        _logger.LogInformation("Token refreshed for user {UserId} to client {ClientId}", 
+        _logger.LogInformation("Token refreshed for user {UserId} to client {ClientId}",
             userId, request.ClientId);
 
         // 返回新令牌

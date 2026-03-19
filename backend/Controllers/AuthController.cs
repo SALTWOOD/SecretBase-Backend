@@ -5,6 +5,7 @@ using backend.Services;
 using backend.Types.Request;
 using backend.Types.Response;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using static backend.Services.SessionService;
@@ -112,32 +113,22 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
                 new MessageResponse("An invitation is required to register.")
             );
 
-        bool emailExists = await _db.Users
-            .AnyAsync(u => u.Email == model.Email);
-        if (emailExists) return BadRequest(new MessageResponse("Email is already registered."));
-
-        bool usernameExists = await _db.Users
-            .AnyAsync(u => u.Username == model.Username);
-        if (usernameExists) return BadRequest(new MessageResponse("Username is already taken."));
-
-        // create User
-        User newUser = new User
+        try 
         {
-            Username = model.Username,
-            Email = model.Email,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password),
-            Role = UserRole.User,
-            IsBanned = false,
-            RegisterTime = DateTime.UtcNow,
-            Avatar = Constants.DEFAULT_AVATAR_URL,
-            UsedInviteId = invite?.Id
-        };
-        await _db.Users.AddAsync(newUser);
-        await _db.SaveChangesAsync();
+            // Supabase 注册会自动发送验证邮件（取决于你的 .env 配置）
+            var session = await _supa.Auth.SignUp(model.Email, model.Password);
 
-        await UpdateLastLoginAsync(newUser, HttpContext);
-        await RefreshTokenAsync(newUser);
-        return Ok(newUser);
+            if (session?.User != null)
+            {
+                return CreatedAtAction(nameof(Register), new { id = session.User.Id }, session.User);
+            }
+        }
+        catch (Supabase.Gotrue.Exceptions.GotrueException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+
+        return BadRequest("Unexpected end of \"register\" function.");
     }
 
     [HttpPost("renew")]

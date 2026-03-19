@@ -4,7 +4,7 @@ using StackExchange.Redis;
 namespace backend.Services;
 
 public record BaseServices(
-    AppDbContext Database,
+    Supabase.Client Supa,
     IConnectionMultiplexer Redis,
     SessionService Session,
     SettingService Setting

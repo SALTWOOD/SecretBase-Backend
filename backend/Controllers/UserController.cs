@@ -1,11 +1,16 @@
 ﻿using backend.Database;
-using backend.Database.Entities;
+using backend.Database.Models;
 using backend.Filters;
 using backend.Services;
 using backend.Types.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Webp;
+using SixLabors.ImageSharp.Processing;
+using Supabase.Gotrue;
+using User = backend.Database.Entities.User;
 
 namespace backend.Controllers;
 
@@ -18,44 +23,51 @@ public class UserController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(typeof(User), StatusCodes.Status200OK)]
     public async Task<IActionResult> Profile()
     {
-        return Ok(await CurrentUser);
+        return Ok(await GetCurrentProfileAsync());
     }
 
-    [Authorize(Policy = "CookieOnly")]  // 密码修改仅限 Cookie Session
+    [Authorize(Policy = "CookieOnly")]
     [HttpPost("profile")]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileModel model)
     {
-        var user = await _db.Users.FindAsync(CurrentUserId);
-        if (user == null) return BadRequest(new MessageResponse("User not found."));
+        var user = await GetCurrentUserAsync();
+        var profile = await GetCurrentProfileAsync();
+        var id = Guid.Parse(user.Id);
 
-        // check if both old and new passwords are provided or neither
+        if (user == null) return Unauthorized(new MessageResponse("User not found."));
+
         bool hasNew = !string.IsNullOrWhiteSpace(model.NewPassword);
         bool hasOld = !string.IsNullOrWhiteSpace(model.OldPassword);
 
-        if (hasNew != hasOld) return BadRequest(new MessageResponse("Both old and new passwords must be provided to change password."));
-
-        // update username if provided and different
-        if (!string.IsNullOrEmpty(model.Username) && model.Username != user.Username)
-        {
-            bool usernameExists = await _db.Users
-                .AnyAsync(u => u.Username == model.Username && u.Id != CurrentUserId);
-            if (usernameExists) return BadRequest(new MessageResponse("Username is already taken."));
-
-            user.Username = model.Username;
-        }
+        if (hasNew != hasOld)
+            return BadRequest(new MessageResponse("Both old and new passwords must be provided."));
 
         if (hasNew)
         {
-            if (!BCrypt.Net.BCrypt.Verify(model.OldPassword, user.PasswordHash))
-            {
-                return BadRequest(new MessageResponse("Entered wrong old password."));
-            }
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
+            var attrs = new AdminUserAttributes { Password = model.NewPassword };
+            var updateRes = await _supa.Auth.Update(attrs);
+            if (updateRes == null) return BadRequest(new MessageResponse("Failed to update password."));
         }
 
-        await _db.SaveChangesAsync();
+        if (!string.IsNullOrEmpty(model.Username))
+        {
+            var existing = await _supa
+                .From<Profile>()
+                .Where(u => u.Username == model.Username && u.Id != id)
+                .Get();
+
+            if (existing.Models.Any())
+                return BadRequest(new MessageResponse("Username is already taken."));
+
+            await _supa
+                .From<Profile>()
+                .Where(x => x.Id == id)
+                .Set(x => x.Username, model.Username)
+                .Update();
+        }
+
         return Ok(new MessageResponse("Profile updated."));
     }
 
@@ -64,56 +76,67 @@ public class UserController(BaseServices deps) : BaseApiController(deps)
     [Disabled(true)]
     [ProducesResponseType(typeof(AvatarResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> UpdateAvatar(IFormFile file)
+    public async Task<IActionResult> UpdateAvatar(IFormFile? file)
     {
-        if (file == null)
-            return BadRequest(new MessageResponse { Message = "No file provided." });
+        const string bucket = "user_avatar";
+        
+        // check file
+        if (file == null || file.Length == 0)
+            return BadRequest(new MessageResponse("No file provided."));
+
+        // check file size
         if (file.Length > 2 * 1024 * 1024)
-            return BadRequest($"Image too big. Expected lower than 2097152 bytes, but found ${file.Length} bytes.");
+            return BadRequest(new MessageResponse("Original image is too large."));
 
-        var extension = Path.GetExtension(file.FileName).ToLower();
-        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
-        if (!allowedExtensions.Contains(extension)) return BadRequest(new MessageResponse { Message = "Unsupported image format." });
+        // get filename
+        var userId = await GetCurrentUserIdAsync();
+        var fileName = $"{userId}.webp";
 
+        using var outStream = new MemoryStream();
         try
         {
-            using var image = await SixLabors.ImageSharp.Image.LoadAsync(file.OpenReadStream());
-        }
-        catch { return BadRequest(new MessageResponse("Invalid image file.")); }
-
-        var oldAvatar = await _db.Users
-            .Where(u => u.Id == CurrentUserId)
-            .Select(u => u.Avatar)
-            .FirstOrDefaultAsync();
-
-        var fileName = $"{CurrentUserId}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}{extension}";
-        var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "avatars");
-        if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
-        var filePath = Path.Combine(folderPath, fileName);
-
-        using (var stream = new FileStream(filePath, FileMode.Create))
-        {
-            await file.CopyToAsync(stream);
-        }
-
-        var avatarUrl = $"/uploads/avatars/{fileName}";
-        var dbUser = await _db.Users.FindAsync(CurrentUserId);
-        if (dbUser != null)
-        {
-            dbUser.Avatar = avatarUrl;
-            await _db.SaveChangesAsync();
-        }
-
-        if (!string.IsNullOrEmpty(oldAvatar) && oldAvatar.StartsWith("/uploads/"))
-        {
-            var oldFilePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", oldAvatar.TrimStart('/'));
-            if (System.IO.File.Exists(oldFilePath))
+            using (var image = await Image.LoadAsync(file.OpenReadStream()))
             {
-                System.IO.File.Delete(oldFilePath);
+                image.Mutate(x => x
+                    .Resize(new ResizeOptions { Size = new Size(512, 512), Mode = ResizeMode.Max })
+                );
+
+                var encoder = new WebpEncoder
+                {
+                    Quality = 75,
+                    FileFormat = WebpFileFormatType.Lossy
+                };
+
+                // save as webp
+                await image.SaveAsWebpAsync(outStream, encoder);
             }
         }
+        catch
+        {
+            return BadRequest(new MessageResponse("Invalid image file."));
+        }
 
-        return Ok(new AvatarResponse(avatarUrl));
+        // remove old avatar
+        var profile = await GetCurrentProfileAsync();
+        if (!string.IsNullOrEmpty(profile?.Avatar))
+        {
+            var oldFileName = Path.GetFileName(profile.Avatar);
+            await _supa.Storage.From(bucket).Remove(new List<string> { oldFileName });
+        }
+
+        var fileBytes = outStream.ToArray();
+        await _supa.Storage
+            .From(bucket)
+            .Upload(fileBytes, fileName, new Supabase.Storage.FileOptions { ContentType = "image/webp" });
+
+        var publicUrl = _supa.Storage.From(bucket).GetPublicUrl(fileName);
+
+        await _supa.From<Profile>()
+            .Where(x => x.Id == userId)
+            .Set(x => x.Avatar, publicUrl)
+            .Update();
+
+        return Ok(new { avatarUrl = publicUrl });
     }
 }
 

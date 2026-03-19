@@ -12,6 +12,7 @@ using OpenIddict.Abstractions;
 using StackExchange.Redis;
 using System;
 using System.Threading.RateLimiting;
+using Supabase;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +40,19 @@ builder.Services.AddCors(options =>
         }
     });
 });
+#endregion
+
+#region Database (Supabase)
+
+var url = builder.Configuration["Supabase:Url"];
+var key = builder.Configuration["Supabase:Key"];
+
+builder.Services.AddScoped<Supabase.Client>(_ => 
+    new Supabase.Client(url, key, new SupabaseOptions
+    {
+        AutoConnectRealtime = true
+    }));
+
 #endregion
 
 #region Database (EF Core with PostgreSQL)
@@ -152,10 +166,10 @@ builder.Services.AddOpenIddict()
     })
     .AddServer(options =>
     {
-        options.SetAuthorizationEndpointUris("/connect/authorize")
-               .SetTokenEndpointUris("/connect/token")
-               .SetIntrospectionEndpointUris("/connect/introspect")
-               .SetRevocationEndpointUris("/connect/revoke");
+        options.SetAuthorizationEndpointUris("/oauth2/authorize")
+               .SetTokenEndpointUris("/oauth2/token")
+               .SetIntrospectionEndpointUris("/oauth2/introspect")
+               .SetRevocationEndpointUris("/oauth2/revoke");
 
         // Enable authorization code flow with PKCE support
         options.AllowAuthorizationCodeFlow();
@@ -171,13 +185,9 @@ builder.Services.AddOpenIddict()
 
         // Register standard scopes
         options.RegisterScopes(
-            OpenIddictConstants.Permissions.Scopes.Email,
-            OpenIddictConstants.Permissions.Scopes.Profile,
-            OpenIddictConstants.Permissions.Prefixes.Scope + "offline_access"
-        );
-
-        // Register custom scopes
-        options.RegisterScopes(
+            OpenIddictConstants.Scopes.Email,
+            OpenIddictConstants.Scopes.Profile,
+            "offline_access",
             "roles",
             "apps",
             "consents",
