@@ -1,4 +1,4 @@
-using backend.Database.Entities;
+using backend.Database.Models;
 using backend.Services;
 using backend.Types.Request;
 using backend.Types.Response;
@@ -6,76 +6,48 @@ using backend.Types.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Supabase.Postgrest;
 
 namespace backend.Controllers;
 
 [Route("comments")]
 public class CommentController(BaseServices deps) : BaseApiController(deps)
 {
-    [HttpGet("article/{articleId}")]
+    [HttpGet("article/{articleId:guid}")]
     [ProducesResponseType(typeof(List<CommentResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetCommentsByArticle(int articleId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    public async Task<IActionResult> GetCommentsByArticle(Guid articleId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
-        var article = await _db.Articles.FindAsync(articleId);
+        var article = await _supa.From<Article>().GetByIdAsync(articleId);
         if (article == null)
         {
             return NotFound(new MessageResponse("Article not found."));
         }
 
-        var comments = await _db.Comments
-            .Where(c => c.ArticleId == articleId && !c.IsDeleted && c.ParentCommentId == null)
-            .OrderByDescending(c => c.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(c => new CommentResponse
-            {
-                Id = c.Id,
-                Content = c.Content,
-                ArticleId = c.ArticleId,
-                AuthorId = c.AuthorId,
-                AuthorUsername = c.Author != null ? c.Author.Username : null,
-                ParentCommentId = c.ParentCommentId,
-                CreatedAt = c.CreatedAt,
-                UpdatedAt = c.UpdatedAt,
-                IsDeleted = c.IsDeleted,
-                ReplyCount = c.Replies.Count(r => !r.IsDeleted)
-            })
-            .ToListAsync();
+        var comments = await _supa.From<Comment>()
+            .Where(it => it.ArticleId == articleId)
+            .Page(page, pageSize)
+            .Get();
 
-        return Ok(comments);
+        return Ok(comments.Models);
     }
 
-    [HttpGet("{id}/replies")]
+    [HttpGet("{id:guid}/replies")]
     [ProducesResponseType(typeof(List<CommentResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetReplies(int commentId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    public async Task<IActionResult> GetReplies(Guid commentId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
-        var parentComment = await _db.Comments.FindAsync(commentId);
+        var parentComment = await _supa.From<Comment>().Where(it => it.Id == commentId).Single();
         if (parentComment == null)
         {
             return NotFound(new MessageResponse("Comment not found."));
         }
 
-        var replies = await _db.Comments
+        var replies = await _supa.From<Comment>()
             .Where(c => c.ParentCommentId == commentId && !c.IsDeleted)
-            .OrderBy(c => c.CreatedAt)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .Select(c => new CommentResponse
-            {
-                Id = c.Id,
-                Content = c.Content,
-                ArticleId = c.ArticleId,
-                AuthorId = c.AuthorId,
-                AuthorUsername = c.Author != null ? c.Author.Username : null,
-                ParentCommentId = c.ParentCommentId,
-                CreatedAt = c.CreatedAt,
-                UpdatedAt = c.UpdatedAt,
-                IsDeleted = c.IsDeleted,
-                ReplyCount = c.Replies.Count(r => !r.IsDeleted)
-            })
-            .ToListAsync();
+            .Order("created_at", Constants.Ordering.Descending)
+            .Page(page, pageSize)
+            .Get();
 
-        return Ok(replies);
+        return Ok(replies.Models);
     }
 
     [HttpPost]
@@ -83,123 +55,82 @@ public class CommentController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(typeof(CommentResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> CreateComment([FromBody] CommentCreateModel model, [FromQuery] int articleId)
+    public async Task<IActionResult> CreateComment([FromBody] CommentCreateModel body, [FromQuery] Guid articleId)
     {
-        if (CurrentUserId == null)
-        {
-            return BadRequest(new MessageResponse("User not authenticated."));
-        }
+        var userId = await GetCurrentUserIdAsync();
 
-        var article = await _db.Articles.FindAsync(articleId);
+        var article = await _supa.From<Article>().GetByIdAsync(articleId);
         if (article == null)
         {
             return NotFound(new MessageResponse("Article not found."));
         }
 
-        if (model.ParentCommentId.HasValue)
+        if (body.ParentCommentId.HasValue)
         {
-            var parentComment = await _db.Comments.FindAsync(model.ParentCommentId.Value);
+            var parentComment = await _supa.From<Comment>().GetByIdAsync(body.ParentCommentId.Value);
             if (parentComment == null || parentComment.ArticleId != articleId || parentComment.IsDeleted)
             {
                 return BadRequest(new MessageResponse("Invalid parent comment."));
             }
         }
 
-        var comment = new Comment
+        var model = await _supa.From<Comment>().Insert(new Comment
         {
-            Content = model.Content,
+            Content = body.Content,
             ArticleId = articleId,
-            AuthorId = CurrentUserId.Value,
-            ParentCommentId = model.ParentCommentId,
+            AuthorId = userId,
+            ParentCommentId = body.ParentCommentId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
-        };
+        });
+        var comment = model.Model!;
 
-        _db.Comments.Add(comment);
-        await _db.SaveChangesAsync();
-
-        var response = new CommentResponse
-        {
-            Id = comment.Id,
-            Content = comment.Content,
-            ArticleId = comment.ArticleId,
-            AuthorId = comment.AuthorId,
-            AuthorUsername = (await _db.Users.FindAsync(comment.AuthorId))?.Username,
-            ParentCommentId = comment.ParentCommentId,
-            CreatedAt = comment.CreatedAt,
-            UpdatedAt = comment.UpdatedAt,
-            IsDeleted = comment.IsDeleted,
-            ReplyCount = 0
-        };
-
-        return CreatedAtAction(nameof(GetCommentsByArticle), new { articleId = comment.ArticleId }, response);
+        return CreatedAtAction(nameof(GetCommentsByArticle), new { articleId = comment.ArticleId }, comment );
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("{id:guid}")]
     [Authorize]
     [ProducesResponseType(typeof(CommentResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateComment(int id, [FromBody] CommentUpdateModel model)
+    public async Task<IActionResult> UpdateComment(Guid id, [FromBody] CommentUpdateModel body)
     {
-        var comment = await _db.Comments.FindAsync(id);
+        var comment = await _supa.From<Comment>().GetByIdAsync(id);
         if (comment == null)
         {
             return NotFound(new MessageResponse("Comment not found."));
         }
 
-        if (CurrentUserId == null)
-        {
-            return BadRequest(new MessageResponse("User not authenticated."));
-        }
-
-        if (comment.AuthorId != CurrentUserId.Value)
+        var userId = await GetCurrentUserIdAsync();
+        if (comment.AuthorId != userId)
         {
             return Forbid();
         }
 
-        comment.Content = model.Content;
+        comment.Content = body.Content;
         comment.UpdatedAt = DateTime.UtcNow;
+        
+        var model = await _supa.From<Comment>().Update(comment);
 
-        await _db.SaveChangesAsync();
-
-        var response = new CommentResponse
-        {
-            Id = comment.Id,
-            Content = comment.Content,
-            ArticleId = comment.ArticleId,
-            AuthorId = comment.AuthorId,
-            AuthorUsername = (await _db.Users.FindAsync(comment.AuthorId))?.Username,
-            ParentCommentId = comment.ParentCommentId,
-            CreatedAt = comment.CreatedAt,
-            UpdatedAt = comment.UpdatedAt,
-            IsDeleted = comment.IsDeleted,
-            ReplyCount = comment.Replies.Count(r => !r.IsDeleted)
-        };
-
-        return Ok(response);
+        return Ok(model.Model);
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("{id:guid}")]
     [Authorize]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteComment(int id)
+    public async Task<IActionResult> DeleteComment(Guid id)
     {
-        var comment = await _db.Comments.FindAsync(id);
+        var comment = await _supa.From<Comment>().GetByIdAsync(id);
         if (comment == null)
         {
             return NotFound(new MessageResponse("Comment not found."));
         }
 
-        if (CurrentUserId == null)
-        {
-            return BadRequest(new MessageResponse("User not authenticated."));
-        }
-
-        if (comment.AuthorId != CurrentUserId.Value)
+        var userId = await GetCurrentUserIdAsync();
+        if (comment.AuthorId != userId)
         {
             return Forbid();
         }
@@ -207,7 +138,7 @@ public class CommentController(BaseServices deps) : BaseApiController(deps)
         comment.IsDeleted = true;
         comment.UpdatedAt = DateTime.UtcNow;
 
-        await _db.SaveChangesAsync();
+        await _supa.From<Comment>().Update(comment); 
 
         return Ok(new MessageResponse("Comment deleted successfully."));
     }
