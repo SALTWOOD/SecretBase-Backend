@@ -1,9 +1,11 @@
-﻿namespace backend.Database.Entities;
+﻿using System.Runtime.Serialization;
+
+namespace backend.Database.Models;
 
 public enum UserRole
 {
-    Guest = 0,
-    User = 1,
-    Admin = 2,
-    Owner = 3
+    [EnumMember(Value = "user")]
+    User,
+    [EnumMember(Value = "admin")]
+    Admin
 }

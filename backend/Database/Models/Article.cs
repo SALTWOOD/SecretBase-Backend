@@ -1,28 +1,35 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using backend.Database.Models;
+using Supabase.Postgrest.Attributes;
+using Supabase.Postgrest.Models;
 
-namespace backend.Database.Entities;
+namespace backend.Database.Models;
 
-public class Article
+[Table("articles")]
+public class Article : BaseModel
 {
-    public int Id { get; set; }
+    [PrimaryKey("id", true)]
+    public Guid Id { get; set; }
 
-    [MaxLength(200)]
-    public required string Title { get; set; }
+    [Column("title")]
+    public string Title { get; set; } = string.Empty;
 
-    [MaxLength(10000)]
-    public required string Content { get; set; }
+    [Column("content")]
+    public string Content { get; set; } = string.Empty;
 
-    public int AuthorId { get; set; }
+    [Column("author_id")]
+    public Guid AuthorId { get; set; }
 
-    [JsonIgnore]
-    public User? Author { get; set; }
+    [Column("is_published")]
+    public bool IsPublished { get; set; }
 
-    public List<Comment> Comments { get; set; } = new();
+    [Column("created_at")]
+    public DateTime CreatedAt { get; set; }
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    [Column("updated_at")]
+    public DateTime UpdatedAt { get; set; }
 
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-
-    public bool IsPublished { get; set; } = false;
+    [Reference(typeof(Profile), includeInQuery: true, foreignKey: "author_id")]
+    public Profile? Author { get; set; }
 }

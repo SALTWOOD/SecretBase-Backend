@@ -1,35 +1,38 @@
-using System.ComponentModel.DataAnnotations;
-using System.Text.Json.Serialization;
+using Supabase.Postgrest.Attributes;
+using Supabase.Postgrest.Models;
 
-namespace backend.Database.Entities;
+namespace backend.Database.Models;
 
-public class Comment
+[Table("comments")]
+public class Comment : BaseModel
 {
-    public int Id { get; set; }
+    [PrimaryKey("id", true)]
+    public Guid Id { get; set; }
 
-    [MaxLength(2000)]
-    public required string Content { get; set; }
+    [Column("content")]
+    public string Content { get; set; } = string.Empty;
 
-    public int ArticleId { get; set; }
+    [Column("article_id")]
+    public Guid ArticleId { get; set; }
 
-    [JsonIgnore]
-    public Article? Article { get; set; }
+    [Column("author_id")]
+    public Guid AuthorId { get; set; }
 
-    public int AuthorId { get; set; }
+    [Column("parent_comment_id")]
+    public Guid? ParentCommentId { get; set; }
 
-    [JsonIgnore]
-    public User? Author { get; set; }
-
-    public int? ParentCommentId { get; set; }
-
-    [JsonIgnore]
-    public Comment? ParentComment { get; set; }
-
-    public List<Comment> Replies { get; set; } = new();
-
+    [Column("created_at")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    [Column("updated_at")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    [Column("is_deleted")]
     public bool IsDeleted { get; set; } = false;
+
+    [Reference(typeof(Profile), foreignKey: "author_id")]
+    public Profile? Author { get; set; }
+
+    [Reference(typeof(Comment), foreignKey: "parent_comment_id", includeInQuery: false)]
+    public List<Comment> Replies { get; set; } = new();
 }
