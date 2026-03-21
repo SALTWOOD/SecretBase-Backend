@@ -145,7 +145,7 @@ private void GenerateNodes(StringBuilder sb, Node node, int indent)
                     var propertyName = ToPascalCase(leaf.FullKey!.Split('.').Last());
                     sb.Append($"{space}        {leaf.DataType} {propertyName}{(i == leafNodes.Count - 1 ? "" : ",")}\n");
                 }
-                sb.AppendLine($"{space}    )");
+                sb.AppendLine($"{space}    ) {{ }}");
 
                 sb.AppendLine($"{space}    public static async Task<Data> GetValuesAsObjectAsync() {{");
                 sb.AppendLine($"{space}        var dict = await GetValuesAsync();");
