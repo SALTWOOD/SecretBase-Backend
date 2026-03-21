@@ -7,10 +7,8 @@ public class Article
 {
     public int Id { get; set; }
 
-    [MaxLength(200)]
     public required string Title { get; set; }
 
-    [MaxLength(10000)]
     public required string Content { get; set; }
 
     public int AuthorId { get; set; }
