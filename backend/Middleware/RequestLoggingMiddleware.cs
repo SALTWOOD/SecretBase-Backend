@@ -4,17 +4,8 @@ using System.Text.Json;
 
 namespace backend.Middleware;
 
-public class RequestLoggingMiddleware
+public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggingMiddleware> logger)
 {
-    private readonly RequestDelegate _next;
-    private readonly ILogger<RequestLoggingMiddleware> _logger;
-
-    public RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggingMiddleware> logger)
-    {
-        _next = next;
-        _logger = logger;
-    }
-
     public async Task InvokeAsync(HttpContext context)
     {
         // 记录请求开始时间
@@ -46,7 +37,7 @@ public class RequestLoggingMiddleware
             IsAuthenticated = context.User?.Identity?.IsAuthenticated ?? false
         };
 
-        _logger.LogInformation("=== HTTP REQUEST ===\n{RequestInfo}", 
+        logger.LogInformation("=== HTTP REQUEST ===\n{RequestInfo}", 
             JsonSerializer.Serialize(requestInfo, new JsonSerializerOptions { WriteIndented = true }));
 
         // 捕获响应
@@ -56,11 +47,11 @@ public class RequestLoggingMiddleware
 
         try
         {
-            await _next(context);
+            await next(context);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "An error occurred while processing the request");
+            logger.LogError(ex, "An error occurred while processing the request");
             throw;
         }
 
@@ -88,10 +79,10 @@ public class RequestLoggingMiddleware
             DurationFormatted = stopwatch.Elapsed.ToString(@"hh\:mm\:ss\.fff")
         };
 
-        _logger.LogInformation("=== HTTP RESPONSE ===\n{ResponseInfo}", 
+        logger.LogInformation("=== HTTP RESPONSE ===\n{ResponseInfo}", 
             JsonSerializer.Serialize(responseInfo, new JsonSerializerOptions { WriteIndented = true }));
         
-        _logger.LogInformation("=== REQUEST COMPLETED IN {Duration}ms ===", stopwatch.ElapsedMilliseconds);
+        logger.LogInformation("=== REQUEST COMPLETED IN {Duration}ms ===", stopwatch.ElapsedMilliseconds);
     }
 
     private async Task<string> ReadRequestBodyAsync(HttpContext context)
