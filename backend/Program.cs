@@ -228,7 +228,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 var scopeFactory = app.Services.GetRequiredService<IServiceScopeFactory>();
-SettingNode.Provider = new EfSettingProvider(scopeFactory);
+SettingNode.GlobalProvider = new EfSettingProvider(scopeFactory);
 #endregion
 
 await app.RunAsync();

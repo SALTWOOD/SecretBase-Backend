@@ -26,8 +26,8 @@ public static partial class SettingRegistry
 
         // --- Home Background ---
         "site.home.background.url:string",
-        "site.home.background.blur:float",   // 虚化度
-        "site.home.background.opacity:float", // 透明度
+        "site.home.background.blur:int",   // 虚化度
+        "site.home.background.opacity:int", // 透明度
 
         // --- Home Banner ---
         "site.home.banner.content:string",

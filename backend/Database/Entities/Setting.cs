@@ -5,10 +5,11 @@ namespace backend.Database.Entities;
 public enum SettingType
 {
     String = 0,
-    Number = 1,
-    Boolean = 2,
-    Json = 3,
-    Null = 4
+    Integer = 1,
+    Number = 2,
+    Boolean = 3,
+    Json = 4,
+    Null = 5
 }
 
 public class Setting
@@ -34,11 +35,27 @@ public class Setting
             }
         }
 
-        if (Type == SettingType.Json) return JsonSerializer.Deserialize<T>(Value);
-
         if (underlyingType.IsEnum) return (T)Enum.Parse(underlyingType, Value);
+        switch (Type)
+        {
+            case SettingType.String:
+                return (T)Convert.ChangeType(Value, underlyingType, System.Globalization.CultureInfo.InvariantCulture);
+            case SettingType.Integer:
+                return (T)Convert.ChangeType(int.Parse(Value), underlyingType,
+                    System.Globalization.CultureInfo.InvariantCulture);
+            case SettingType.Number:
+                return (T)Convert.ChangeType(double.Parse(Value), underlyingType,
+                    System.Globalization.CultureInfo.InvariantCulture);
+            case SettingType.Boolean:
+                bool result = Value.ToLower() == "true" || Value.ToLower() == "t" || (double.TryParse(Value, out double v) && v != 0);
+                return (T)Convert.ChangeType(result, TypeCode.Boolean);
+            case SettingType.Json:
+                return JsonSerializer.Deserialize<T>(Value);
+            case SettingType.Null:
+                return default;
+        }
 
-        return (T)Convert.ChangeType(Value, underlyingType, System.Globalization.CultureInfo.InvariantCulture);
+        return default;
     }
 
 
@@ -65,6 +82,9 @@ public class Setting
             case uint:
             case long:
             case ulong:
+                Value = Convert.ToString(val, System.Globalization.CultureInfo.InvariantCulture);
+                Type = SettingType.Integer;
+                break;
             case float:
             case double:
             case decimal:
@@ -81,7 +101,6 @@ public class Setting
                 break;
         }
     }
-
 }
 
 public static class SettingKeys

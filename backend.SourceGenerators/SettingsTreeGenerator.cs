@@ -123,7 +123,7 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
         return sb.ToString();
     }
 
-    private void GenerateNodes(StringBuilder sb, Node node, int indent)
+private void GenerateNodes(StringBuilder sb, Node node, int indent)
     {
         string space = new string(' ', indent * 4);
         foreach (var child in node.Children.Values)
@@ -131,16 +131,48 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
             var name = ToPascalCase(child.Name);
             if (child.IsLeaf)
             {
-                sb.AppendLine(
-                    $"{space}public static SettingNode<{child.DataType}> {name} {{ get; }} = new(\"{child.FullKey}\");");
+                sb.AppendLine($"{space}public static SettingNode<{child.DataType}> {name} {{ get; }} = new(\"{child.FullKey}\");");
             }
             else
             {
                 sb.AppendLine($"{space}public static partial class {name} {{");
-                sb.AppendLine(
-                    $"{space}    public static Task<IDictionary<string, object?>> GetValuesAsync() => SettingNode<object>.Provider.GetValuesByPrefixAsync(\"{child.FullPrefix}\");");
+                sb.AppendLine($"{space}    public static Task<IDictionary<string, object?>> GetValuesAsync() => SettingNode.GlobalProvider?.GetValuesByPrefixAsync(\"{child.FullPrefix}\") ?? Task.FromResult((IDictionary<string, object?>)new Dictionary<string, object?>());");
+                sb.AppendLine($"{space}    public readonly record struct Data(");
+                var leafNodes = GetRecursiveLeafNodes(child).ToList();
+                for (int i = 0; i < leafNodes.Count; i++)
+                {
+                    var leaf = leafNodes[i];
+                    var propertyName = ToPascalCase(leaf.FullKey!.Split('.').Last());
+                    sb.Append($"{space}        {leaf.DataType} {propertyName}{(i == leafNodes.Count - 1 ? "" : ",")}\n");
+                }
+                sb.AppendLine($"{space}    )");
+
+                sb.AppendLine($"{space}    public static async Task<Data> GetValuesAsObjectAsync() {{");
+                sb.AppendLine($"{space}        var dict = await GetValuesAsync();");
+                sb.AppendLine($"{space}        return new Data(");
+                for (int i = 0; i < leafNodes.Count; i++)
+                {
+                    var leaf = leafNodes[i];
+                    var propertyName = ToPascalCase(leaf.FullKey!.Split('.').Last());
+                    sb.AppendLine($"{space}        ({leaf.DataType})(dict.TryGetValue(\"{leaf.FullKey}\", out var v{i}) ? v{i} : default({leaf.DataType}))!{(i == leafNodes.Count - 1 ? "" : ",")}");
+                }
+                sb.AppendLine($"{space}        );");
+                sb.AppendLine($"{space}    }}");
+
                 GenerateNodes(sb, child, indent + 1);
                 sb.AppendLine($"{space}}}");
+            }
+        }
+    }
+
+    private IEnumerable<Node> GetRecursiveLeafNodes(Node node)
+    {
+        foreach (var child in node.Children.Values)
+        {
+            if (child.IsLeaf) yield return child;
+            foreach (var recursiveChild in GetRecursiveLeafNodes(child))
+            {
+                yield return recursiveChild;
             }
         }
     }
@@ -149,9 +181,8 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
     {
         if (input.IsEmpty) return string.Empty;
 
-        // 预分配缓冲区，PascalCase 长度通常小于等于 snake_case
         char[]? rentedArray = null;
-        Span<char> destination = input.Length <= 256
+        Span<char> destination = input.Length <= 16
             ? stackalloc char[input.Length]
             : (rentedArray = ArrayPool<char>.Shared.Rent(input.Length));
 

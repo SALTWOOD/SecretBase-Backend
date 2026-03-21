@@ -7,24 +7,27 @@ namespace backend.Controllers;
 
 // --- Response DTOs ---
 
-// public readonly record struct HomeAppearanceResponse(
-//     string BackgroundUrl,
-//     int BackgroundBlur,
-//     double BackgroundOpacity,
-//     string BannerContent,
-//     string BannerDisplayMode
-// );
-//
-// public readonly record struct SeoMetaResponse(
-//     string Title,
-//     string Description,
-//     string? Keywords = null,
-//     string? OgTitle = null,
-//     string? OgDescription = null,
-//     string? OgImage = null,
-//     string TwitterCard = "summary_large_image",
-//     string Robots = "index, follow"
-// );
+public readonly record struct HomeBackgroundResponse(
+    string Url,
+    int Blur,
+    int Opacity
+);
+
+public readonly record struct HomeBannerResponse(
+    string Content,
+    string DisplayMode
+);
+
+public readonly record struct SeoMetaResponse(
+    string Title,
+    string Description,
+    string? Keywords = null,
+    string? OgTitle = null,
+    string? OgDescription = null,
+    string? OgImage = null,
+    string TwitterCard = "summary_large_image",
+    string Robots = "index, follow"
+);
 
 public readonly record struct SiteInitResponse(
     IDictionary<string, object?> Seo,
@@ -38,17 +41,24 @@ public readonly record struct SiteInitResponse(
 public class SettingsController(BaseServices deps) : BaseApiController(deps)
 {
     [HttpGet("seo")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType<SeoMetaResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult> GetSeo()
     {
-        return Ok(await SettingRegistry.Site.Seo.GetValuesAsync());
+        return Ok(await SettingRegistry.Site.Seo.GetValuesAsObjectAsync());
     }
 
-    [HttpGet("home")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult> GetHomeAppearance()
+    [HttpGet("home/background")]
+    [ProducesResponseType<HomeBackgroundResponse>(StatusCodes.Status200OK)]
+    public async Task<ActionResult> GetHomeBackground()
     {
-        return Ok(await SettingRegistry.Site.Home.GetValuesAsync());
+        return Ok(await SettingRegistry.Site.Home.Background.GetValuesAsObjectAsync());
+    }
+
+    [HttpGet("home/banner")]
+    [ProducesResponseType<HomeBannerResponse>(StatusCodes.Status200OK)]
+    public async Task<ActionResult> GetHomeBanner()
+    {
+        return Ok(await SettingRegistry.Site.Home.Banner.GetValuesAsObjectAsync());
     }
 
     [HttpGet("init")]
