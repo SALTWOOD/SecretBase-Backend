@@ -124,7 +124,7 @@ public class TotpController : BaseApiController
 
         if (!isValid) return BadRequest(new MessageResponse { Message = "Invalid verification code" });
 
-        var authToken = Request.Cookies[Constants.AUTH_TOKEN_COOKIE_NAME];
+        var authToken = Request.Cookies[ApplicationConstants.AUTH_TOKEN_COOKIE_NAME];
         if (string.IsNullOrEmpty(authToken))
         {
             return BadRequest(new MessageResponse { Message = "Authentication token not found" });

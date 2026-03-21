@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using System;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using System.Collections.Generic;
@@ -123,7 +124,7 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
         string space = new string(' ', indent * 4);
         foreach (var child in node.Children.Values)
         {
-            var name = char.ToUpper(child.Name[0]) + child.Name.Substring(1);
+            var name = ToPascalCase(child.Name);
             if (child.IsLeaf)
             {
                 sb.AppendLine($"{space}public static SettingNode<{child.DataType}> {name} {{ get; }} = new(\"{child.FullKey}\");");
@@ -131,11 +132,41 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
             else
             {
                 sb.AppendLine($"{space}public static partial class {name} {{");
-                sb.AppendLine($"{space}    public static Task<Dictionary<string, string?>> GetValuesAsync() => SettingNode<object>.GetValuesByPrefixAsync(\"{child.FullPrefix}\");");
+                sb.AppendLine($"{space}    public static Task<Dictionary<string, object?>> GetValuesAsync() => Provider.GetByPrefixAsync(\"{child.FullPrefix}\");");
                 GenerateNodes(sb, child, indent + 1);
                 sb.AppendLine($"{space}}}");
             }
         }
+    }
+    
+    public static string ToPascalCase(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return input;
+
+        ReadOnlySpan<char> source = input.AsSpan();
+    
+        Span<char> destination = stackalloc char[source.Length];
+        int destIdx = 0;
+        bool nextUpper = true;
+
+        for (int i = 0; i < source.Length; i++)
+        {
+            char c = source[i];
+            if (c == '_')
+                nextUpper = true;
+            else if (nextUpper)
+            {
+                destination[destIdx++] = char.ToUpperInvariant(c);
+                nextUpper = false;
+            }
+            else
+            {
+                destination[destIdx++] = char.ToLowerInvariant(c);
+            }
+        }
+
+        // 将栈上的内容转回 string
+        return destination.Slice(0, destIdx).ToString();
     }
 
     private class Node {

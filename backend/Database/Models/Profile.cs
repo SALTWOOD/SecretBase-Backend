@@ -1,6 +1,4 @@
-﻿using backend.Database.Entities;
-
-namespace backend.Database.Models;
+﻿namespace backend.Database.Models;
 
 using Supabase.Postgrest.Attributes;
 using Supabase.Postgrest.Models;

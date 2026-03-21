@@ -1,7 +1,5 @@
-﻿using backend.Database;
-using backend.Database.Entities;
-using Microsoft.EntityFrameworkCore;
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
+using backend.Database.Models;
 
 namespace backend;
 
@@ -21,16 +19,17 @@ public static class Utils
         return string.Join("-", Enumerable.Range(0, 4).Select(i => result.Substring(i * 5, 5)));
     }
 
-    public static async Task<Invite?> GetInvite(AppDbContext db, string? code, bool doIncrement = true)
+    public static async Task<Invite?> GetInvite(Supabase.Client client, string? code, bool doIncrement = true)
     {
         if (string.IsNullOrEmpty(code)) return null;
-        Invite? invite = await db.Invites
-            .FirstOrDefaultAsync(it => it.Code == code);
+        Invite? invite = await client.From<Invite>()
+            .Where(i => i.Code == code)
+            .Single();
         
         if (doIncrement && invite != null && invite.IsValid)
         {
             invite.UsedCount++;
-            await db.SaveChangesAsync();
+            await client.From<Invite>().Update(invite);
         }
         return invite;
     }

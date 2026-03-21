@@ -8,5 +8,5 @@ public class CommentCreateModel
     [MaxLength(2000)]
     public required string Content { get; set; }
 
-    public int? ParentCommentId { get; set; }
+    public Guid? ParentCommentId { get; set; }
 }

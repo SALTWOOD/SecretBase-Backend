@@ -104,7 +104,7 @@ public class WebAuthnController : BaseApiController
         await _db.SaveChangesAsync();
         var user = await _db.Users.FirstAsync(it => it.Id == credential.UserId);
 
-        var authToken = Request.Cookies[Constants.AUTH_TOKEN_COOKIE_NAME];
+        var authToken = Request.Cookies[ApplicationConstants.AUTH_TOKEN_COOKIE_NAME];
         if (string.IsNullOrEmpty(authToken))
         {
             return BadRequest(new MessageResponse { Message = "Authentication token not found" });

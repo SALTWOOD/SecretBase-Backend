@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace backend.SourceGenerators;
 
@@ -9,4 +10,8 @@ public interface ISettingProvider
     
     // 写入配置
     Task SetAsync<T>(string key, T value);
+    
+    Task<bool> ExistsAsync(string key);
+
+    Task<Dictionary<string, object?>> GetByPrefixAsync(string prefix);
 }

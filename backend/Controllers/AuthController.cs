@@ -1,5 +1,6 @@
 ﻿using backend.Database;
 using backend.Database.Entities;
+using backend.Database.Models;
 using backend.Filters;
 using backend.Services;
 using backend.Types.Request;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Supabase.Gotrue;
 using static backend.Services.SessionService;
 
 namespace backend.Controllers;
@@ -71,9 +73,9 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
 
     [HttpPost("logout")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> Logout([FromServices] SessionService sessionService)
+    public async Task<IActionResult> Logout()
     {
-        if (Request.Cookies.TryGetValue(Constants.AUTH_TOKEN_COOKIE_NAME, out var token))
+        if (Request.Cookies.TryGetValue(ApplicationConstants.AUTH_TOKEN_COOKIE_NAME, out var token))
         {
             // revoke token
             await sessionService.RemoveSessionAsync(token);
@@ -86,7 +88,7 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
             SameSite = SameSiteMode.Lax,
             Path = "/"
         };
-        HttpContext.Response.Cookies.Delete(Constants.AUTH_TOKEN_COOKIE_NAME, options);
+        HttpContext.Response.Cookies.Delete(ApplicationConstants.AUTH_TOKEN_COOKIE_NAME, options);
         return NoContent();
     }
 
@@ -95,9 +97,9 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(typeof(User), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> Register([FromBody] AuthRegisterModel model, [FromServices] SettingService setting)
+    public async Task<IActionResult> Register([FromBody] AuthRegisterModel model)
     {
-        bool enabled = await setting.Get<bool>("site.user.registration.enabled");
+        bool enabled = await SettingRegistry.Site.User.Registration.Enabled.GetValueAsync();
         if (!enabled)
             return StatusCode(
                 StatusCodes.Status403Forbidden,
@@ -105,8 +107,8 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
             );
 
 
-        bool forceInvitation = await setting.Get<bool>("site.user.registration.force_invitation");
-        Invite? invite = await Utils.GetInvite(_db, model.InviteCode);
+        bool forceInvitation = await SettingRegistry.Site.User.Registration.ForceInvitation.GetValueAsync();
+        Invite? invite = await Utils.GetInvite(_supa, model.InviteCode);
         if (forceInvitation && invite == null)
             return StatusCode(
                 StatusCodes.Status403Forbidden,
@@ -129,33 +131,5 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
         }
 
         return BadRequest("Unexpected end of \"register\" function.");
-    }
-
-    [HttpPost("renew")]
-    [Authorize]
-    [ProducesResponseType(typeof(TokenRenewResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> RenewToken()
-    {
-        var user = await _db.Users
-            .Where(u => u.Id == CurrentUserId)
-            .Select(u => new User { Id = u.Id, Username = u.Username, Role = u.Role })
-            .FirstOrDefaultAsync();
-        if (user == null)
-        {
-            return Unauthorized(new { message = "User not found." });
-        }
-
-        await UpdateLastLoginAsync(user, HttpContext);
-        int expires = await RefreshTokenAsync(user);
-        var autoRenew = await _setting.Get<bool>("site.security.cookie.auto_renew");
-        DateTime? expiresValue = autoRenew ? DateTime.UtcNow.AddHours(expires) : null;
-
-        return Ok(new TokenRenewResponse
-        {
-            Message = "Token renewed successfully.",
-            User = user,
-            Expires = expiresValue
-        });
     }
 }

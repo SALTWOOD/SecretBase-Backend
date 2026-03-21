@@ -1,6 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using Supabase.Postgrest;
+using Supabase.Postgrest.Interfaces;
+using Supabase.Postgrest.Models;
 
 namespace backend;
 
@@ -26,21 +29,21 @@ public static class ExtensionMethods
         return value.Value;
     }
 
-    public static async Task<(List<T> Items, int TotalCount)> ToPageListAsync<T>(
-        this IQueryable<T> query,
-        int page,
-        int size)
+    public static IPostgrestTable<TModel> Page<TModel>(this IPostgrestTable<TModel> query, int page, int pageSize) 
+        where TModel : BaseModel, new()
     {
-        page = Math.Max(1, page);
-        size = Math.Clamp(size, 1, 100);
+        if (page < 1) page = 1;
+        if (pageSize < 1) pageSize = 10;
 
-        var totalCount = await query.CountAsync();
+        int from = (page - 1) * pageSize;
+        int to = from + pageSize - 1;
 
-        var items = await query
-            .Skip((page - 1) * size)
-            .Take(size)
-            .ToListAsync();
-
-        return (items, totalCount);
+        return query.Range(from, to);
+    }
+    
+    public static Task<TModel?> GetByIdAsync<TModel>(this IPostgrestTable<TModel> table, Guid id) 
+        where TModel : BaseModel, new()
+    {
+        return table.Filter("id", Constants.Operator.Equals, id).Single();
     }
 }

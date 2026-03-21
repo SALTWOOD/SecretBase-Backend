@@ -5,7 +5,5 @@ namespace backend.Services;
 
 public record BaseServices(
     Supabase.Client Supa,
-    IConnectionMultiplexer Redis,
-    SessionService Session,
-    SettingService Setting
+    IConnectionMultiplexer Redis
 );

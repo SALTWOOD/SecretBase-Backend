@@ -10,7 +10,6 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Webp;
 using SixLabors.ImageSharp.Processing;
 using Supabase.Gotrue;
-using User = backend.Database.Entities.User;
 
 namespace backend.Controllers;
 

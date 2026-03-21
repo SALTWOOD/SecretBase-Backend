@@ -1,6 +1,6 @@
-﻿using backend.Database.Entities;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using backend.Database.Models;
 
 namespace backend.Filters;
 

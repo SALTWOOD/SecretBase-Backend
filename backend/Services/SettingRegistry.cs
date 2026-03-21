@@ -1,8 +1,6 @@
-﻿using System.ComponentModel;
-using System.Text.Json;
-using backend.Database;
-using backend.Database.Entities;
+﻿using backend.Database.Models;
 using backend.SourceGenerators;
+using Supabase.Postgrest;
 
 namespace backend.Services;
 
@@ -37,4 +35,45 @@ public static partial class SettingRegistry
         "site.home.banner.content:string",
         "site.home.banner.display_mode:string" // full | mini | screen | hidden
     ];
+
+    public static ISettingProvider? Provider { get; set; }
+}
+
+
+public class SettingProvider(Supabase.Client _supa) : ISettingProvider
+{
+    public async Task<T?> GetAsync<T>(string key, T? defaultValue = default)
+    {
+        var setting = await _supa.From<Setting>()
+            .Where(it => it.Key == key)
+            .Single();
+        if  (setting is null) return defaultValue;
+        return setting.GetValue<T>();
+    }
+
+    public async Task SetAsync<T>(string key, T value)
+    {
+        var setting = await _supa.From<Setting>()
+            .Where(it => it.Key == key)
+            .Single();
+        setting?.SetValue(value);
+    }
+
+    public async Task<bool> ExistsAsync(string key)
+    {
+        return await _supa.From<Setting>()
+            .Filter("key", Constants.Operator.Equals, key)
+            .Count(Constants.CountType.Exact, CancellationToken.None) > 0;
+    }
+
+    public async Task<Dictionary<string, object?>> GetByPrefixAsync(string prefix)
+    {
+        var settings = await _supa.From<Setting>()
+            .Filter("key", Constants.Operator.Like, $"{prefix}%")
+            .Get();
+        return settings.Models.ToDictionary(
+            static it => it.Key,
+            static it => it.GetValue<object>()
+        );
+    }
 }
