@@ -143,7 +143,7 @@ public class WebAuthnController : BaseApiController
             }
 
             int expires = await RefreshTokenAsync(user, TokenPermissionLevel.Full);
-            var autoRenew = await _setting.Get<bool>("site.security.cookie.auto_renew");
+            var autoRenew = await SettingRegistry.Site.Security.Cookie.AutoRenew;
             var expiresValue = autoRenew ? DateTime.UtcNow.AddHours(expires) : (DateTime?)null;
 
             return Ok(new MessageResponse

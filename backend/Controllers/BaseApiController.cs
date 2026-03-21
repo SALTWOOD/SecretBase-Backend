@@ -17,7 +17,6 @@ public class BaseApiController(BaseServices deps) : ControllerBase
     protected readonly AppDbContext _db = deps.Database;
     protected readonly IDatabase _redis = deps.Redis.GetDatabase();
     protected readonly SessionService _session = deps.Session;
-    protected readonly SettingService _setting = deps.Setting;
 
     protected int? CurrentUserId => int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int result) ? result : null;
 

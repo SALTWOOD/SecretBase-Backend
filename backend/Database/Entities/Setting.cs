@@ -42,7 +42,7 @@ public class Setting
     }
 
 
-    public void SetValue(object val)
+    public void SetValue(object? val)
     {
         if (val == null)
         {

@@ -1,4 +1,6 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using System;
+using System.Buffers;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using System.Collections.Generic;
@@ -10,7 +12,7 @@ namespace backend.SourceGenerators;
 [Generator]
 public class SettingsTreeGenerator : IIncrementalGenerator
 {
-    private class TargetClassInfo 
+    private class TargetClassInfo
     {
         public string Namespace { get; }
         public string ClassName { get; }
@@ -48,19 +50,21 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
     private TargetClassInfo? GetTargetClassInfo(GeneratorSyntaxContext context)
     {
         var cds = (ClassDeclarationSyntax)context.Node;
-        
+
         // 1. 检查特性
-        var hasAttr = cds.AttributeLists.Any(al => al.Attributes.Any(a => 
+        var hasAttr = cds.AttributeLists.Any(al => al.Attributes.Any(a =>
             a.Name.ToString().Contains("GenerateSettingsTree")));
         if (!hasAttr) return null;
 
         // 2. 获取命名空间
         string ns = "Global";
         var parent = cds.Parent;
-        while (parent != null && parent is not NamespaceDeclarationSyntax && parent is not FileScopedNamespaceDeclarationSyntax)
+        while (parent != null && parent is not NamespaceDeclarationSyntax &&
+               parent is not FileScopedNamespaceDeclarationSyntax)
         {
             parent = parent.Parent;
         }
+
         if (parent is BaseNamespaceDeclarationSyntax nsDecl) ns = nsDecl.Name.ToString();
 
         // 3. 获取类名
@@ -105,14 +109,15 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
                 if (!current.Children.ContainsKey(segment))
                     current.Children[segment] = new Node(segment) { FullPrefix = runningPrefix };
                 current = current.Children[segment];
-                if (i == segments.Length - 1) 
-                { 
-                    current.IsLeaf = true; 
-                    current.FullKey = path; 
-                    current.DataType = type; 
+                if (i == segments.Length - 1)
+                {
+                    current.IsLeaf = true;
+                    current.FullKey = path;
+                    current.DataType = type;
                 }
             }
         }
+
         GenerateNodes(sb, root, 1);
         sb.AppendLine("}");
         return sb.ToString();
@@ -123,22 +128,65 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
         string space = new string(' ', indent * 4);
         foreach (var child in node.Children.Values)
         {
-            var name = char.ToUpper(child.Name[0]) + child.Name.Substring(1);
+            var name = ToPascalCase(child.Name);
             if (child.IsLeaf)
             {
-                sb.AppendLine($"{space}public static SettingNode<{child.DataType}> {name} {{ get; }} = new(\"{child.FullKey}\");");
+                sb.AppendLine(
+                    $"{space}public static SettingNode<{child.DataType}> {name} {{ get; }} = new(\"{child.FullKey}\");");
             }
             else
             {
                 sb.AppendLine($"{space}public static partial class {name} {{");
-                sb.AppendLine($"{space}    public static Task<Dictionary<string, string?>> GetValuesAsync() => SettingNode<object>.GetValuesByPrefixAsync(\"{child.FullPrefix}\");");
+                sb.AppendLine(
+                    $"{space}    public static Task<IDictionary<string, object?>> GetValuesAsync() => SettingNode<object>.Provider.GetValuesByPrefixAsync(\"{child.FullPrefix}\");");
                 GenerateNodes(sb, child, indent + 1);
                 sb.AppendLine($"{space}}}");
             }
         }
     }
 
-    private class Node {
+    public static string ToPascalCase(ReadOnlySpan<char> input)
+    {
+        if (input.IsEmpty) return string.Empty;
+
+        // 预分配缓冲区，PascalCase 长度通常小于等于 snake_case
+        char[]? rentedArray = null;
+        Span<char> destination = input.Length <= 256
+            ? stackalloc char[input.Length]
+            : (rentedArray = ArrayPool<char>.Shared.Rent(input.Length));
+
+        try
+        {
+            int destIndex = 0;
+            bool upperNext = true;
+
+            for (int i = 0; i < input.Length; i++)
+            {
+                char curr = input[i];
+
+                if (curr == '_')
+                    upperNext = true;
+                else if (upperNext)
+                {
+                    destination[destIndex++] = char.ToUpperInvariant(curr);
+                    upperNext = false;
+                }
+                else destination[destIndex++] = curr;
+            }
+
+            return destination.Slice(0, destIndex).ToString();
+        }
+        finally
+        {
+            if (rentedArray != null)
+            {
+                ArrayPool<char>.Shared.Return(rentedArray);
+            }
+        }
+    }
+
+    private class Node
+    {
         public string Name;
         public string? FullPrefix;
         public Dictionary<string, Node> Children = new();

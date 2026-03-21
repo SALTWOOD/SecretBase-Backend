@@ -12,6 +12,7 @@ using OpenIddict.Abstractions;
 using StackExchange.Redis;
 using System;
 using System.Threading.RateLimiting;
+using backend.SourceGenerators;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -66,7 +67,6 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer
 builder.Services.AddSingleton<TwoFactorManager>();
 builder.Services.AddScoped<ICapValidateService, CapValidateService>();
 builder.Services.AddScoped<SessionService>();
-builder.Services.AddScoped<SettingService>();
 builder.Services.AddScoped<BaseServices>();
 builder.Services.AddScoped<WebAuthnService>();
 builder.Services.AddScoped<TwoFactorFilter>();
@@ -223,10 +223,12 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     var context = services.GetRequiredService<AppDbContext>();
-    var setting = services.GetRequiredService<SettingService>();
 
-    await DatabaseInitializer.InitializeAsync(context, setting);
+    await DatabaseInitializer.InitializeAsync(context);
 }
+
+var scopeFactory = app.Services.GetRequiredService<IServiceScopeFactory>();
+SettingNode.Provider = new EfSettingProvider(scopeFactory);
 #endregion
 
 await app.RunAsync();

@@ -31,7 +31,7 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
             return BadRequest(new MessageResponse("Invalid email or password."));
         }
 
-        var autoRenew = await _setting.Get<bool>("site.security.cookie.auto_renew");
+        var autoRenew = await SettingRegistry.Site.Security.Cookie.AutoRenew;
 
         if (user.ForceTwoFactor)
         {
@@ -94,9 +94,9 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(typeof(User), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> Register([FromBody] AuthRegisterModel model, [FromServices] SettingService setting)
+    public async Task<IActionResult> Register([FromBody] AuthRegisterModel model)
     {
-        bool enabled = await setting.Get<bool>("site.user.registration.enabled");
+        bool enabled = await SettingRegistry.Site.User.Registration.Enabled;
         if (!enabled)
             return StatusCode(
                 StatusCodes.Status403Forbidden,
@@ -104,7 +104,7 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
             );
 
 
-        bool forceInvitation = await setting.Get<bool>("site.user.registration.force_invitation");
+        bool forceInvitation = await SettingRegistry.Site.User.Registration.ForceInvitation;
         Invite? invite = await Utils.GetInvite(_db, model.InviteCode);
         if (forceInvitation && invite == null)
             return StatusCode(
@@ -157,7 +157,7 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
 
         await UpdateLastLoginAsync(user, HttpContext);
         int expires = await RefreshTokenAsync(user);
-        var autoRenew = await _setting.Get<bool>("site.security.cookie.auto_renew");
+        var autoRenew = await SettingRegistry.Site.Security.Cookie.AutoRenew;
         DateTime? expiresValue = autoRenew ? DateTime.UtcNow.AddHours(expires) : null;
 
         return Ok(new TokenRenewResponse

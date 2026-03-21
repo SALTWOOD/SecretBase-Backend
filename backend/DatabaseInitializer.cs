@@ -1,49 +1,50 @@
 ﻿using backend.Database;
 using backend.Database.Entities;
 using backend.Services;
+using backend.SourceGenerators;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend;
 
 public class DatabaseInitializer
 {
-    public static async Task InitializeAsync(AppDbContext db, SettingService settingService)
+    public static async Task InitializeAsync(AppDbContext db)
     {
-        var defaultSettings = new Dictionary<string, object?>
+        var defaultSettings = new Dictionary<SettingNode, object?>
         {
             // Cookie
-            { SettingKeys.Site.Security.Cookie.AutoRenew, true },
-            { SettingKeys.Site.Security.Cookie.ExpireHours, 72 },
+            { SettingRegistry.Site.Security.Cookie.AutoRenew, true },
+            { SettingRegistry.Site.Security.Cookie.ExpireHours, 72 },
 
             // Registration
-            { SettingKeys.Site.User.Registration.Enabled, true },
-            { SettingKeys.Site.User.Registration.ForceInvitation, false },
+            { SettingRegistry.Site.User.Registration.Enabled, true },
+            { SettingRegistry.Site.User.Registration.ForceInvitation, false },
 
             // SEO Default Values
-            { SettingKeys.Site.Seo.Title, "默认站点" },
-            { SettingKeys.Site.Seo.Description, "基于 ASP.NET Core 与 Nuxt 4 强力驱动的站点" },
-            { SettingKeys.Site.Seo.Keywords, "blog, dotnet, nuxt, site" },
-            { SettingKeys.Site.Seo.OgTitle, "Default Website" },
-            { SettingKeys.Site.Seo.OgDescription, "基于 ASP.NET Core 与 Nuxt 4 强力驱动的站点" },
-            { SettingKeys.Site.Seo.OgImage, "/default-og-image.png" },
-            { SettingKeys.Site.Seo.TwitterCard, "summary_large_image" },
-            { SettingKeys.Site.Seo.Robots, "index, follow" },
+            { SettingRegistry.Site.Seo.Title, "默认站点" },
+            { SettingRegistry.Site.Seo.Description, "基于 ASP.NET Core 与 Nuxt 4 强力驱动的站点" },
+            { SettingRegistry.Site.Seo.Keywords, "blog, dotnet, nuxt, site" },
+            { SettingRegistry.Site.Seo.OgTitle, "Default Website" },
+            { SettingRegistry.Site.Seo.OgDescription, "基于 ASP.NET Core 与 Nuxt 4 强力驱动的站点" },
+            { SettingRegistry.Site.Seo.OgImage, "/default-og-image.png" },
+            { SettingRegistry.Site.Seo.TwitterCard, "summary_large_image" },
+            { SettingRegistry.Site.Seo.Robots, "index, follow" },
 
             // Background Settings
-            { SettingKeys.Site.Home.Background.Url, null },
-            { SettingKeys.Site.Home.Background.Blur, 0 },      // 默认不虚化
-            { SettingKeys.Site.Home.Background.Opacity, 1.0 }, // 默认不透明
+            { SettingRegistry.Site.Home.Background.Url, null },
+            { SettingRegistry.Site.Home.Background.Blur, 0 },      // 默认不虚化
+            { SettingRegistry.Site.Home.Background.Opacity, 1.0 }, // 默认不透明
 
             // Banner Settings
-            { SettingKeys.Site.Home.Banner.Content, "Welcome to My Site" },
-            { SettingKeys.Site.Home.Banner.DisplayMode, "full" } // 默认为全屏高度
+            { SettingRegistry.Site.Home.Banner.Content, "Welcome to My Site" },
+            { SettingRegistry.Site.Home.Banner.DisplayMode, "full" } // 默认为全屏高度
         };
 
-        foreach (var item in defaultSettings)
+        foreach (var (key, value) in defaultSettings)
         {
-            if (!await settingService.Exists(item.Key))
+            if (!await key.ExistsAsync())
             {
-                await settingService.Set(item.Key, item.Value);
+                await key.SetValueAsync(value);
             }
         }
 

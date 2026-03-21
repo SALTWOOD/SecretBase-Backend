@@ -58,19 +58,17 @@ public readonly record struct SessionData(
 public class SessionService
 {
     private readonly IDatabase _redis;
-    private readonly SettingService _setting;
     private const string SessionPrefix = "user_session:";
 
-    public SessionService(IConnectionMultiplexer redis, SettingService setting)
+    public SessionService(IConnectionMultiplexer redis)
     {
         _redis = redis.GetDatabase();
-        _setting = setting;
     }
 
     public async Task<(string, int)> CreateSessionAsync(User user, HashSet<string>? access = null, int? expireHours = null, TokenPermissionLevel permissionLevel = TokenPermissionLevel.Full)
     {
         if (access == null) access = [Permissions.All];
-        var hours = expireHours.HasValue ? expireHours.Value : await _setting.Get<int>(SettingKeys.Site.Security.Cookie.ExpireHours);
+        var hours = expireHours.HasValue ? expireHours.Value : await SettingRegistry.Site.Security.Cookie.ExpireHours;
         var token = Utils.GenerateRandomSecret(64);
         var key = $"{SessionPrefix}{token}";
 
