@@ -144,7 +144,7 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
                 sb.AppendLine(
                     $"{space}    public static Task<IDictionary<string, object?>> GetValuesAsync() => SettingNode.GlobalProvider?.GetValuesByPrefixAsync(\"{child.FullPrefix}\") ?? Task.FromResult((IDictionary<string, object?>)new Dictionary<string, object?>());");
 
-                sb.AppendLine($"{space}    public readonly record struct Data(");
+                sb.AppendLine($"{space}    public sealed record Data(");
                 var directMembers = child.Children.Values.ToList();
                 for (int i = 0; i < directMembers.Count; i++)
                 {
