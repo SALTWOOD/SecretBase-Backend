@@ -123,56 +123,66 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
         return sb.ToString();
     }
 
-private void GenerateNodes(StringBuilder sb, Node node, int indent)
+    private void GenerateNodes(StringBuilder sb, Node node, int indent)
     {
         string space = new string(' ', indent * 4);
+
         foreach (var child in node.Children.Values)
         {
             var name = ToPascalCase(child.Name);
             if (child.IsLeaf)
             {
-                sb.AppendLine($"{space}public static SettingNode<{child.DataType}> {name} {{ get; }} = new(\"{child.FullKey}\");");
+                sb.AppendLine(
+                    $"{space}public static SettingNode<{child.DataType}> {name} {{ get; }} = new(\"{child.FullKey}\");");
             }
             else
             {
                 sb.AppendLine($"{space}public static partial class {name} {{");
-                sb.AppendLine($"{space}    public static Task<IDictionary<string, object?>> GetValuesAsync() => SettingNode.GlobalProvider?.GetValuesByPrefixAsync(\"{child.FullPrefix}\") ?? Task.FromResult((IDictionary<string, object?>)new Dictionary<string, object?>());");
+
+                GenerateNodes(sb, child, indent + 1);
+
+                sb.AppendLine(
+                    $"{space}    public static Task<IDictionary<string, object?>> GetValuesAsync() => SettingNode.GlobalProvider?.GetValuesByPrefixAsync(\"{child.FullPrefix}\") ?? Task.FromResult((IDictionary<string, object?>)new Dictionary<string, object?>());");
+
                 sb.AppendLine($"{space}    public readonly record struct Data(");
-                var leafNodes = GetRecursiveLeafNodes(child).ToList();
-                for (int i = 0; i < leafNodes.Count; i++)
+                var directMembers = child.Children.Values.ToList();
+                for (int i = 0; i < directMembers.Count; i++)
                 {
-                    var leaf = leafNodes[i];
-                    var propertyName = ToPascalCase(leaf.FullKey!.Split('.').Last());
-                    sb.Append($"{space}        {leaf.DataType} {propertyName}{(i == leafNodes.Count - 1 ? "" : ",")}\n");
+                    var m = directMembers[i];
+                    var typeName = m.IsLeaf ? m.DataType : $"{ToPascalCase(m.Name)}.Data";
+                    sb.Append(
+                        $"{space}        {typeName} {ToPascalCase(m.Name)}{(i == directMembers.Count - 1 ? "" : ",")}\n");
                 }
+
                 sb.AppendLine($"{space}    ) {{ }}");
 
                 sb.AppendLine($"{space}    public static async Task<Data> GetValuesAsObjectAsync() {{");
                 sb.AppendLine($"{space}        var dict = await GetValuesAsync();");
+                sb.AppendLine($"{space}        return await GetValuesFromDictAsync(dict);");
+                sb.AppendLine($"{space}    }}");
+                sb.AppendLine(
+                    $"{space}    internal static async Task<Data> GetValuesFromDictAsync(IDictionary<string, object?> dict) {{");
                 sb.AppendLine($"{space}        return new Data(");
-                for (int i = 0; i < leafNodes.Count; i++)
+                for (int i = 0; i < directMembers.Count; i++)
                 {
-                    var leaf = leafNodes[i];
-                    var propertyName = ToPascalCase(leaf.FullKey!.Split('.').Last());
-                    sb.AppendLine($"{space}        ({leaf.DataType})(dict.TryGetValue(\"{leaf.FullKey}\", out var v{i}) ? v{i} : default({leaf.DataType}))!{(i == leafNodes.Count - 1 ? "" : ",")}");
+                    var m = directMembers[i];
+                    var mName = ToPascalCase(m.Name);
+                    if (m.IsLeaf)
+                    {
+                        sb.AppendLine(
+                            $"{space}            ({m.DataType})(dict.TryGetValue(\"{m.FullKey}\", out var v{i}) ? v{i} : default({m.DataType}))!{(i == directMembers.Count - 1 ? "" : ",")}");
+                    }
+                    else
+                    {
+                        sb.AppendLine(
+                            $"{space}            await {mName}.GetValuesFromDictAsync(dict){(i == directMembers.Count - 1 ? "" : ",")}");
+                    }
                 }
+
                 sb.AppendLine($"{space}        );");
                 sb.AppendLine($"{space}    }}");
 
-                GenerateNodes(sb, child, indent + 1);
                 sb.AppendLine($"{space}}}");
-            }
-        }
-    }
-
-    private IEnumerable<Node> GetRecursiveLeafNodes(Node node)
-    {
-        foreach (var child in node.Children.Values)
-        {
-            if (child.IsLeaf) yield return child;
-            foreach (var recursiveChild in GetRecursiveLeafNodes(child))
-            {
-                yield return recursiveChild;
             }
         }
     }
