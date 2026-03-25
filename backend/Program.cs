@@ -70,6 +70,8 @@ builder.Services.AddScoped<SessionService>();
 builder.Services.AddScoped<BaseServices>();
 builder.Services.AddScoped<WebAuthnService>();
 builder.Services.AddScoped<TwoFactorFilter>();
+builder.Services.AddScoped<ShortcodeSandbox>();
+builder.Services.AddScoped<ShortcodeService>();
 builder.Services.AddFido2(options =>
 {
     options.ServerDomain = builder.Configuration["WebAuthn:ServerDomain"] ?? "localhost";

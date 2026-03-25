@@ -15,6 +15,7 @@ public class AppDbContext : DbContext
     public DbSet<UserCredential> UserCredentials => Set<UserCredential>();
     public DbSet<Article> Articles => Set<Article>();
     public DbSet<Comment> Comments => Set<Comment>();
+    public DbSet<Shortcode> Shortcodes => Set<Shortcode>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
