@@ -12,6 +12,7 @@ using OpenIddict.Abstractions;
 using StackExchange.Redis;
 using System;
 using System.Threading.RateLimiting;
+using backend.Services.Shortcodes;
 using backend.SourceGenerators;
 
 var builder = WebApplication.CreateBuilder(args);

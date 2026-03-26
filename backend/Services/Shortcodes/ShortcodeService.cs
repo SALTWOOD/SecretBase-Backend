@@ -8,7 +8,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
-namespace backend.Services;
+namespace backend.Services.Shortcodes;
 
 /// <summary>
 /// 简码服务 - 处理简码的业务逻辑

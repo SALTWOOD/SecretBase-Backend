@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using System.Text.Json;
 
-namespace backend.Services;
+namespace backend.Services.Shortcodes;
 
 public class ShortcodeSandbox
 {
@@ -116,6 +116,7 @@ public class ShortcodeSandbox
         {
             db = new SafeDbAccess(_db, shortcodeName, _logger),
             redis = new SafeRedisAccess(_redis, shortcodeName),
+            http = new SafeHttpAccess(_httpClientFactory, shortcodeName, _logger),
             currentUser = currentUser != null
                 ? new
                 {
@@ -188,109 +189,5 @@ public class ShortcodeSandbox
             JsonValueKind.Null => null,
             _ => null
         };
-    }
-}
-
-/// <summary>
-/// 安全的数据库访问
-/// </summary>
-public class SafeDbAccess
-{
-    private readonly AppDbContext _db;
-    private readonly string _shortcodeName;
-    private readonly ILogger _logger;
-
-    public SafeDbAccess(AppDbContext db, string shortcodeName, ILogger logger)
-    {
-        _db = db;
-        _shortcodeName = shortcodeName;
-        _logger = logger;
-    }
-
-    // 提供只读查询能力
-    // 注意：这里简化实现，实际应该限制可访问的表和操作
-    public async Task<object?> FindByIdAsync(string entityType, int id)
-    {
-        _logger.LogDebug("[{Shortcode}] FindByIdAsync: {EntityType} {Id}", _shortcodeName, entityType, id);
-        return entityType.ToLower() switch
-        {
-            "user" => await _db.Users.FindAsync(id),
-            "article" => await _db.Articles.FindAsync(id),
-            "comment" => await _db.Comments.FindAsync(id),
-            _ => null
-        };
-    }
-}
-
-/// <summary>
-/// 安全的 Redis 访问
-/// </summary>
-public class SafeRedisAccess
-{
-    private readonly IDatabase _redis;
-    private readonly string _keyPrefix;
-
-    public SafeRedisAccess(IDatabase redis, string shortcodeName)
-    {
-        _redis = redis;
-        _keyPrefix = $"shortcode:{shortcodeName}:";
-    }
-
-    public async Task<string?> GetAsync(string key)
-    {
-        var value = await _redis.StringGetAsync(_keyPrefix + key);
-        return value.HasValue ? value.ToString() : null;
-    }
-
-    public async Task SetAsync(string key, string value, int? expirySeconds = null)
-    {
-        if (expirySeconds.HasValue)
-        {
-            await _redis.StringSetAsync(_keyPrefix + key, value, TimeSpan.FromSeconds(expirySeconds.Value));
-        }
-        else
-        {
-            await _redis.StringSetAsync(_keyPrefix + key, value);
-        }
-    }
-
-    public async Task DeleteAsync(string key)
-    {
-        await _redis.KeyDeleteAsync(_keyPrefix + key);
-    }
-
-    public async Task<bool> ExistsAsync(string key)
-    {
-        return await _redis.KeyExistsAsync(_keyPrefix + key);
-    }
-}
-
-/// <summary>
-/// 安全的日志记录器
-/// </summary>
-public class SafeLogger
-{
-    private readonly ILogger _logger;
-    private readonly string _shortcodeName;
-
-    public SafeLogger(ILogger logger, string shortcodeName)
-    {
-        _logger = logger;
-        _shortcodeName = shortcodeName;
-    }
-
-    public void Info(string message, object? data = null)
-    {
-        _logger.LogInformation("[{Shortcode}] {Message} {@Data}", _shortcodeName, message, data);
-    }
-
-    public void Warn(string message, object? data = null)
-    {
-        _logger.LogWarning("[{Shortcode}] {Message} {@Data}", _shortcodeName, message, data);
-    }
-
-    public void Error(string message, object? data = null)
-    {
-        _logger.LogError("[{Shortcode}] {Message} {@Data}", _shortcodeName, message, data);
     }
 }
