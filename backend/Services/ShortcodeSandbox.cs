@@ -101,6 +101,7 @@ public class ShortcodeSandbox
             options.TimeoutInterval(_executionTimeout);
             options.Strict();
             options.AllowClr();
+            options.ExperimentalFeatures = ExperimentalFeature.TaskInterop;
         });
 
         engine.SetValue("context", CreateSafeContext(shortcodeName, currentUser));
