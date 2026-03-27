@@ -53,21 +53,29 @@ public class AdminStorageBucketController : BaseApiController
             {
                 BucketName = BucketName,
                 Prefix = prefix,
-                MaxKeys = maxKeys
+                MaxKeys = maxKeys,
+                Delimiter = "/"
             };
 
             var response = await _s3Client.ListObjectsV2Async(request);
             
-            var files = response.S3Objects.Select(obj => new S3ObjectResponse
-            {
-                Key = obj.Key,
-                Size = obj.Size ?? 0,
-                LastModified = obj.LastModified ?? DateTime.MinValue,
-                ETag = obj.ETag,
-                StorageClass = obj.StorageClass
-            }).ToList();
+            var folders = (response.CommonPrefixes ?? Enumerable.Empty<string>())
+                .Select(key => new S3ObjectResponse
+                {
+                    Key = key,
+                });
 
-            return Ok(files);
+            var files = (response.S3Objects ?? Enumerable.Empty<S3Object>())
+                .Select(obj => new S3ObjectResponse
+                {
+                    Key = obj.Key,
+                    Size = obj.Size ?? 0,
+                    LastModified = obj.LastModified ?? DateTime.MinValue,
+                    ETag = obj.ETag,
+                    StorageClass = obj.StorageClass
+                });
+
+            return Ok(folders.Concat(files));
         }
         catch (AmazonS3Exception ex)
         {
