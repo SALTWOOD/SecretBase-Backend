@@ -35,4 +35,8 @@
     <ProjectReference Include="..\backend.SourceGenerators\backend.SourceGenerators.csproj" OutputItemType="Analyzer" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\ImageProxyClient\src\ImageProxySharp\ImageProxySharp.csproj" />
+  </ItemGroup>
+
 </Project>

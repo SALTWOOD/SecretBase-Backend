@@ -1,0 +1,3 @@
+[submodule "ImageProxyClient"]
+	path = ImageProxyClient
+	url = https://github.com/SALTWOOD/ImageProxyClient.git
