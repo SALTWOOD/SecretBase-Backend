@@ -7,7 +7,7 @@ namespace backend;
 public static class ExtensionMethods
 {
     public static T ThrowIfNull<T>(
-        [NotNull] this T? value,
+        this T? value,
         string message = "Value cannot be null",
         [CallerArgumentExpression(nameof(value))] string? paramName = null) where T : class
     {
@@ -17,7 +17,7 @@ public static class ExtensionMethods
     }
 
     public static T ThrowIfNull<T>(
-        [NotNull] this T? value,
+        this T? value,
         string message = "Value cannot be null",
         [CallerArgumentExpression(nameof(value))] string? paramName = null) where T : struct
     {
