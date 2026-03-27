@@ -1,3 +1,6 @@
+using Amazon;
+using Amazon.Runtime;
+using Amazon.S3;
 using backend;
 using backend.Controllers;
 using backend.Database;
@@ -62,6 +65,29 @@ var redisConnection = builder.Configuration.GetConnectionString("RedisConnection
     ?? throw new InvalidOperationException("Redis connection string is missing.");
 
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConnection));
+#endregion
+
+#region AWS S3 Storage
+builder.Services.AddSingleton<IAmazonS3>(sp =>
+{
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    var s3Section = configuration.GetSection("S3");
+    
+    var accessKeyId = s3Section["AccessKeyId"] ?? throw new InvalidOperationException("S3:AccessKeyId is missing.");
+    var secretAccessKey = s3Section["SecretAccessKey"] ?? throw new InvalidOperationException("S3:SecretAccessKey is missing.");
+    var region = s3Section["Region"] ?? throw new InvalidOperationException("S3:Region is missing.");
+    
+    var credentials = new BasicAWSCredentials(accessKeyId, secretAccessKey);
+    var config = new AmazonS3Config
+    {
+        RegionEndpoint = RegionEndpoint.GetBySystemName(region),
+        ServiceURL = s3Section["Endpoint"],
+        UseHttp = !bool.TryParse(s3Section["UseHttps"], out var useHttps) || !useHttps,
+        ForcePathStyle = bool.TryParse(s3Section["ForcePathStyle"], out var forcePathStyle) && forcePathStyle
+    };
+    
+    return new AmazonS3Client(credentials, config);
+});
 #endregion
 
 #region Business Services
