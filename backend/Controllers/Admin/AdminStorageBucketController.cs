@@ -89,13 +89,13 @@ public class AdminStorageBucketController : BaseApiController
     /// 获取文件详情
     /// </summary>
     /// <param name="key">文件键名（URL 编码）</param>
-    [HttpGet("files/{*key}")]
+    [HttpGet("file")]
     [ProducesResponseType<S3ObjectMetadataResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status500InternalServerError)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> GetFileInfo(string key)
+    public async Task<IActionResult> GetFileInfo([FromQuery] string key)
     {
         try
         {
@@ -135,13 +135,13 @@ public class AdminStorageBucketController : BaseApiController
     /// 删除文件
     /// </summary>
     /// <param name="key">文件键名（URL 编码）</param>
-    [HttpDelete("files/{*key}")]
+    [HttpDelete("file")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status500InternalServerError)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> DeleteFile(string key)
+    public async Task<IActionResult> DeleteFile([FromQuery] string key)
     {
         try
         {
@@ -257,12 +257,12 @@ public class AdminStorageBucketController : BaseApiController
     /// </summary>
     /// <param name="key">文件键名</param>
     /// <param name="expirationMinutes">URL有效期（分钟），默认 15 分钟</param>
-    [HttpGet("presign-download/{*key}")]
+    [HttpGet("presign-download")]
     [ProducesResponseType<PresignedUrlResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public IActionResult GeneratePresignedDownloadUrl(string key, [FromQuery] int expirationMinutes = 15)
+    public IActionResult GeneratePresignedDownloadUrl([FromQuery] string key, [FromQuery] int expirationMinutes = 15)
     {
         if (string.IsNullOrWhiteSpace(key))
         {
