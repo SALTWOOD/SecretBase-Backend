@@ -17,6 +17,7 @@ using System;
 using System.Threading.RateLimiting;
 using backend.Services.Shortcodes;
 using backend.SourceGenerators;
+using ImageProxyClient;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -90,6 +91,14 @@ builder.Services.AddSingleton<IAmazonS3>(sp =>
 
     return new AmazonS3Client(credentials, config);
 });
+
+#endregion
+
+#region ImageProxyClient
+
+builder.Services.AddImageProxyClient(
+    builder.Configuration.GetSection("Imgproxy")
+);
 
 #endregion
 

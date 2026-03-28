@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Net.Mime;
 using backend.Types.Response;
+using ImageProxyClient;
 
 namespace backend.Controllers.Admin;
 
@@ -19,16 +20,19 @@ namespace backend.Controllers.Admin;
 public class AdminStorageBucketController : BaseApiController
 {
     private readonly IAmazonS3 _s3Client;
+    private readonly IImgproxyClient _imgproxyClient;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AdminStorageBucketController> _logger;
 
     public AdminStorageBucketController(
         BaseServices deps,
         IAmazonS3 s3Client,
+        IImgproxyClient imgproxyClient,
         IConfiguration configuration,
         ILogger<AdminStorageBucketController> logger) : base(deps)
     {
         _s3Client = s3Client;
+        _imgproxyClient = imgproxyClient;
         _configuration = configuration;
         _logger = logger;
     }
@@ -169,6 +173,34 @@ public class AdminStorageBucketController : BaseApiController
             return StatusCode(StatusCodes.Status500InternalServerError,
                 new MessageResponse { Message = $"Failed to delete file: {ex.Message}" });
         }
+    }
+    
+    /// <summary>
+    /// 获取文件缩略图（图片文件）
+    /// </summary>
+    /// <param name="key">文件键名（URL 编码）</param>
+    [HttpGet("thumbnail")]
+    [ProducesResponseType<UrlResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<MessageResponse>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<MessageResponse>(StatusCodes.Status500InternalServerError)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetThumbnail([FromQuery] string key)
+    {
+        var builder = new UriBuilder();
+        builder.Scheme = "s3";
+        builder.Host = BucketName;
+        builder.Path = key;
+        var uri = Uri.UnescapeDataString(builder.ToString());
+        var url = _imgproxyClient.BuildUrl(uri, options =>
+            options.Resize(512, 512, ResizeMode.Fit)
+                .Quality(80)
+                .Format(ImageFormat.WebP)
+        );
+        return Ok(new UrlResponse
+        {
+            Url = url
+        });
     }
 
     /// <summary>
