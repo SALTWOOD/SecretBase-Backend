@@ -38,12 +38,12 @@ public static class TokenPermissions
     /// <summary>
     /// Permission set for no permission token
     /// </summary>
-    public static HashSet<string> None => new HashSet<string>();
+    public static HashSet<string> None => new();
 
     /// <summary>
     /// Permission set for full permission token
     /// </summary>
-    public static HashSet<string> Full => new HashSet<string> { Permissions.All };
+    public static HashSet<string> Full => new() { Permissions.All };
 }
 
 public readonly record struct SessionData(
@@ -65,14 +65,15 @@ public class SessionService
         _redis = redis.GetDatabase();
     }
 
-    public async Task<(string, int)> CreateSessionAsync(User user, HashSet<string>? access = null, int? expireHours = null, TokenPermissionLevel permissionLevel = TokenPermissionLevel.Full)
+    public async Task<(string, int)> CreateSessionAsync(User user, HashSet<string>? access = null,
+        int? expireHours = null, TokenPermissionLevel permissionLevel = TokenPermissionLevel.Full)
     {
         if (access == null) access = [Permissions.All];
         var hours = expireHours.HasValue ? expireHours.Value : await SettingRegistry.Site.Security.Cookie.ExpireHours;
         var token = Utils.GenerateRandomSecret(64);
         var key = $"{SessionPrefix}{token}";
 
-        SessionData sessionData = new SessionData
+        var sessionData = new SessionData
         {
             Id = user.Id,
             Username = user.Username,
@@ -113,10 +114,7 @@ public class SessionService
 
         // Get current remaining time to live
         var ttl = await _redis.KeyTimeToLiveAsync(key);
-        if (ttl.HasValue)
-        {
-            await _redis.StringSetAsync(key, JsonSerializer.Serialize(upgradedSession), ttl.Value);
-        }
+        if (ttl.HasValue) await _redis.StringSetAsync(key, JsonSerializer.Serialize(upgradedSession), ttl.Value);
 
         return true;
     }
@@ -144,9 +142,9 @@ public class SessionService
 
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, session.Id.ToString()),
-            new Claim(ClaimTypes.Name, session.Username),
-            new Claim(ClaimTypes.Role, session.Role.ToString())
+            new(ClaimTypes.NameIdentifier, session.Id.ToString()),
+            new(ClaimTypes.Name, session.Username),
+            new(ClaimTypes.Role, session.Role.ToString())
         };
 
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "SimpleSession"));

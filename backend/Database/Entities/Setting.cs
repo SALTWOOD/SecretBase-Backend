@@ -24,16 +24,12 @@ public class Setting
     {
         if (string.IsNullOrEmpty(Value)) return default;
 
-        Type targetType = typeof(T);
-        Type underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
+        var targetType = typeof(T);
+        var underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
 
         if (underlyingType == typeof(object) || underlyingType == typeof(string))
-        {
             if (Type == SettingType.String || Type == SettingType.Null)
-            {
                 return (T?)(object?)Value;
-            }
-        }
 
         if (underlyingType.IsEnum) return (T)Enum.Parse(underlyingType, Value);
         switch (Type)
@@ -47,7 +43,8 @@ public class Setting
                 return (T)Convert.ChangeType(double.Parse(Value), underlyingType,
                     System.Globalization.CultureInfo.InvariantCulture);
             case SettingType.Boolean:
-                bool result = Value.ToLower() == "true" || Value.ToLower() == "t" || (double.TryParse(Value, out double v) && v != 0);
+                var result = Value.ToLower() == "true" || Value.ToLower() == "t" ||
+                             (double.TryParse(Value, out var v) && v != 0);
                 return (T)Convert.ChangeType(result, TypeCode.Boolean);
             case SettingType.Json:
                 return JsonSerializer.Deserialize<T>(Value);

@@ -28,7 +28,8 @@ public class WebAuthnController : BaseApiController
     private const string REG_PREFIX = "webauthn:reg";
     private const string LOGIN_PREFIX = "webauthn:login";
 
-    public WebAuthnController(BaseServices deps, WebAuthnService service, IFido2 fido2, TwoFactorManager twoFactor) : base(deps)
+    public WebAuthnController(BaseServices deps, WebAuthnService service, IFido2 fido2, TwoFactorManager twoFactor) :
+        base(deps)
     {
         _service = service;
         _fido2 = fido2;
@@ -56,7 +57,7 @@ public class WebAuthnController : BaseApiController
     [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> VerifyRegistration([FromBody] AuthenticatorAttestationRawResponse response)
     {
-        using JsonDocument doc = JsonDocument.Parse(response.Response.ClientDataJson);
+        using var doc = JsonDocument.Parse(response.Response.ClientDataJson);
         var challenge = doc.RootElement.GetProperty("challenge").GetString();
 
         var cacheKey = $"{REG_PREFIX}:{challenge}";
@@ -74,9 +75,10 @@ public class WebAuthnController : BaseApiController
     [HttpPost("login/verify")]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> VerifyLogin([FromBody] AuthenticatorAssertionRawResponse response, [FromQuery] bool isLogin = false)
+    public async Task<IActionResult> VerifyLogin([FromBody] AuthenticatorAssertionRawResponse response,
+        [FromQuery] bool isLogin = false)
     {
-        using JsonDocument doc = JsonDocument.Parse(response.Response.ClientDataJson);
+        using var doc = JsonDocument.Parse(response.Response.ClientDataJson);
         var challenge = doc.RootElement.GetProperty("challenge").GetString();
 
         var cacheKey = $"{LOGIN_PREFIX}:{challenge}";
@@ -106,9 +108,7 @@ public class WebAuthnController : BaseApiController
 
         var authToken = Request.Cookies[Constants.AUTH_TOKEN_COOKIE_NAME];
         if (string.IsNullOrEmpty(authToken))
-        {
             return BadRequest(new MessageResponse { Message = "Authentication token not found" });
-        }
 
         // Get token permission level
         var permissionLevel = await _session.GetTokenPermissionLevelAsync(authToken);
@@ -117,14 +117,10 @@ public class WebAuthnController : BaseApiController
         {
             // If it's a no permission token, upgrade to full permission token
             if (permissionLevel == TokenPermissionLevel.None)
-            {
                 await _session.UpgradeTokenAsync(authToken);
-            }
             // If it's already a full permission token, set 2FA grace period
             else if (permissionLevel == TokenPermissionLevel.Full)
-            {
                 await _twoFactor.GrantGracePeriodAsync(user.Id, authToken);
-            }
 
             await _redis.KeyDeleteAsync(cacheKey);
             return NoContent();
@@ -133,16 +129,12 @@ public class WebAuthnController : BaseApiController
         {
             // If it's a no permission token, upgrade to full permission token
             if (permissionLevel == TokenPermissionLevel.None)
-            {
                 await _session.UpgradeTokenAsync(authToken);
-            }
             // If it's already a full permission token, set 2FA grace period
             else if (permissionLevel == TokenPermissionLevel.Full)
-            {
                 await _twoFactor.GrantGracePeriodAsync(user.Id, authToken);
-            }
 
-            int expires = await RefreshTokenAsync(user, TokenPermissionLevel.Full);
+            var expires = await RefreshTokenAsync(user, TokenPermissionLevel.Full);
             var autoRenew = await SettingRegistry.Site.Security.Cookie.AutoRenew;
             var expiresValue = autoRenew ? DateTime.UtcNow.AddHours(expires) : (DateTime?)null;
 
@@ -157,7 +149,7 @@ public class WebAuthnController : BaseApiController
     [ProducesResponseType<AssertionOptions>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetLoginOptions()
     {
-        int? id = CurrentUserId;
+        var id = CurrentUserId;
         var credentials = id.HasValue ? await _service.GetUserCredentialsAsync(id.Value) : [];
         var existingKeys = credentials.Select(c => new PublicKeyCredentialDescriptor(c.CredentialId)).ToList();
 
@@ -177,7 +169,9 @@ public class WebAuthnController : BaseApiController
     [Authorize]
     [ProducesResponseType<List<UserCredential>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> ListCredentials()
-        => Ok(await _service.GetUserCredentialsAsync(CurrentUserId.ThrowIfNull()));
+    {
+        return Ok(await _service.GetUserCredentialsAsync(CurrentUserId.ThrowIfNull()));
+    }
 
     [HttpDelete("credentials/{id:int}")]
     [Authorize]
@@ -194,9 +188,7 @@ public class WebAuthnController : BaseApiController
     public async Task<IActionResult> PutCredential(int id, [FromBody] CredentialUpdateModel model)
     {
         if (model.Nickname != null)
-        {
             await _service.UpdateDeviceNicknameAsync(id, CurrentUserId.ThrowIfNull(), model.Nickname);
-        }
         return NoContent();
     }
 }

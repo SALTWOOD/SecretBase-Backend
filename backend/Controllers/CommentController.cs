@@ -14,13 +14,11 @@ public class CommentController(BaseServices deps) : BaseApiController(deps)
 {
     [HttpGet("article/{articleId}")]
     [ProducesResponseType(typeof(List<CommentResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetCommentsByArticle(int articleId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    public async Task<IActionResult> GetCommentsByArticle(int articleId, [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
     {
         var article = await _db.Articles.FindAsync(articleId);
-        if (article == null)
-        {
-            return NotFound(new MessageResponse("Article not found."));
-        }
+        if (article == null) return NotFound(new MessageResponse("Article not found."));
 
         var comments = await _db.Comments
             .Where(c => c.ArticleId == articleId && !c.IsDeleted && c.ParentCommentId == null)
@@ -50,10 +48,7 @@ public class CommentController(BaseServices deps) : BaseApiController(deps)
     public async Task<IActionResult> GetReplies(int commentId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         var parentComment = await _db.Comments.FindAsync(commentId);
-        if (parentComment == null)
-        {
-            return NotFound(new MessageResponse("Comment not found."));
-        }
+        if (parentComment == null) return NotFound(new MessageResponse("Comment not found."));
 
         var replies = await _db.Comments
             .Where(c => c.ParentCommentId == commentId && !c.IsDeleted)
@@ -85,24 +80,16 @@ public class CommentController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> CreateComment([FromBody] CommentCreateModel model, [FromQuery] int articleId)
     {
-        if (CurrentUserId == null)
-        {
-            return BadRequest(new MessageResponse("User not authenticated."));
-        }
+        if (CurrentUserId == null) return BadRequest(new MessageResponse("User not authenticated."));
 
         var article = await _db.Articles.FindAsync(articleId);
-        if (article == null)
-        {
-            return NotFound(new MessageResponse("Article not found."));
-        }
+        if (article == null) return NotFound(new MessageResponse("Article not found."));
 
         if (model.ParentCommentId.HasValue)
         {
             var parentComment = await _db.Comments.FindAsync(model.ParentCommentId.Value);
             if (parentComment == null || parentComment.ArticleId != articleId || parentComment.IsDeleted)
-            {
                 return BadRequest(new MessageResponse("Invalid parent comment."));
-            }
         }
 
         var comment = new Comment
@@ -144,20 +131,11 @@ public class CommentController(BaseServices deps) : BaseApiController(deps)
     public async Task<IActionResult> UpdateComment(int id, [FromBody] CommentUpdateModel model)
     {
         var comment = await _db.Comments.FindAsync(id);
-        if (comment == null)
-        {
-            return NotFound(new MessageResponse("Comment not found."));
-        }
+        if (comment == null) return NotFound(new MessageResponse("Comment not found."));
 
-        if (CurrentUserId == null)
-        {
-            return BadRequest(new MessageResponse("User not authenticated."));
-        }
+        if (CurrentUserId == null) return BadRequest(new MessageResponse("User not authenticated."));
 
-        if (comment.AuthorId != CurrentUserId.Value)
-        {
-            return Forbid();
-        }
+        if (comment.AuthorId != CurrentUserId.Value) return Forbid();
 
         comment.Content = model.Content;
         comment.UpdatedAt = DateTime.UtcNow;
@@ -189,20 +167,11 @@ public class CommentController(BaseServices deps) : BaseApiController(deps)
     public async Task<IActionResult> DeleteComment(int id)
     {
         var comment = await _db.Comments.FindAsync(id);
-        if (comment == null)
-        {
-            return NotFound(new MessageResponse("Comment not found."));
-        }
+        if (comment == null) return NotFound(new MessageResponse("Comment not found."));
 
-        if (CurrentUserId == null)
-        {
-            return BadRequest(new MessageResponse("User not authenticated."));
-        }
+        if (CurrentUserId == null) return BadRequest(new MessageResponse("User not authenticated."));
 
-        if (comment.AuthorId != CurrentUserId.Value)
-        {
-            return Forbid();
-        }
+        if (comment.AuthorId != CurrentUserId.Value) return Forbid();
 
         comment.IsDeleted = true;
         comment.UpdatedAt = DateTime.UtcNow;

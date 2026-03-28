@@ -36,8 +36,8 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
 
         var provider = context.SyntaxProvider
             .CreateSyntaxProvider(
-                predicate: (s, _) => s is ClassDeclarationSyntax cds && cds.AttributeLists.Count > 0,
-                transform: (ctx, _) => GetTargetClassInfo(ctx))
+                (s, _) => s is ClassDeclarationSyntax cds && cds.AttributeLists.Count > 0,
+                (ctx, _) => GetTargetClassInfo(ctx))
             .Where(x => x != null);
 
         context.RegisterSourceOutput(provider, (ctx, info) =>
@@ -57,18 +57,16 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
         if (!hasAttr) return null;
 
         // 2. 获取命名空间
-        string ns = "Global";
+        var ns = "Global";
         var parent = cds.Parent;
         while (parent != null && parent is not NamespaceDeclarationSyntax &&
                parent is not FileScopedNamespaceDeclarationSyntax)
-        {
             parent = parent.Parent;
-        }
 
         if (parent is BaseNamespaceDeclarationSyntax nsDecl) ns = nsDecl.Name.ToString();
 
         // 3. 获取类名
-        string className = cds.Identifier.Text;
+        var className = cds.Identifier.Text;
 
         // 4. 提取 Keys 数组
         var keysField = cds.Members.OfType<FieldDeclarationSyntax>()
@@ -102,7 +100,7 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
             var segments = path.Split('.');
             var runningPrefix = "";
 
-            for (int i = 0; i < segments.Length; i++)
+            for (var i = 0; i < segments.Length; i++)
             {
                 var segment = segments[i];
                 runningPrefix = i == 0 ? segment : $"{runningPrefix}.{segment}";
@@ -125,7 +123,7 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
 
     private void GenerateNodes(StringBuilder sb, Node node, int indent)
     {
-        string space = new string(' ', indent * 4);
+        var space = new string(' ', indent * 4);
 
         foreach (var child in node.Children.Values)
         {
@@ -146,7 +144,7 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
 
                 sb.AppendLine($"{space}    public sealed record Data(");
                 var directMembers = child.Children.Values.ToList();
-                for (int i = 0; i < directMembers.Count; i++)
+                for (var i = 0; i < directMembers.Count; i++)
                 {
                     var m = directMembers[i];
                     var typeName = m.IsLeaf ? m.DataType : $"{ToPascalCase(m.Name)}.Data";
@@ -163,20 +161,16 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
                 sb.AppendLine(
                     $"{space}    internal static async Task<Data> GetValuesFromDictAsync(IDictionary<string, object?> dict) {{");
                 sb.AppendLine($"{space}        return new Data(");
-                for (int i = 0; i < directMembers.Count; i++)
+                for (var i = 0; i < directMembers.Count; i++)
                 {
                     var m = directMembers[i];
                     var mName = ToPascalCase(m.Name);
                     if (m.IsLeaf)
-                    {
                         sb.AppendLine(
                             $"{space}            ({m.DataType})(dict.TryGetValue(\"{m.FullKey}\", out var v{i}) ? v{i} : default({m.DataType}))!{(i == directMembers.Count - 1 ? "" : ",")}");
-                    }
                     else
-                    {
                         sb.AppendLine(
                             $"{space}            await {mName}.GetValuesFromDictAsync(dict){(i == directMembers.Count - 1 ? "" : ",")}");
-                    }
                 }
 
                 sb.AppendLine($"{space}        );");
@@ -192,37 +186,39 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
         if (input.IsEmpty) return string.Empty;
 
         char[]? rentedArray = null;
-        Span<char> destination = input.Length <= 16
+        var destination = input.Length <= 16
             ? stackalloc char[input.Length]
-            : (rentedArray = ArrayPool<char>.Shared.Rent(input.Length));
+            : rentedArray = ArrayPool<char>.Shared.Rent(input.Length);
 
         try
         {
-            int destIndex = 0;
-            bool upperNext = true;
+            var destIndex = 0;
+            var upperNext = true;
 
-            for (int i = 0; i < input.Length; i++)
+            for (var i = 0; i < input.Length; i++)
             {
-                char curr = input[i];
+                var curr = input[i];
 
                 if (curr == '_')
+                {
                     upperNext = true;
+                }
                 else if (upperNext)
                 {
                     destination[destIndex++] = char.ToUpperInvariant(curr);
                     upperNext = false;
                 }
-                else destination[destIndex++] = curr;
+                else
+                {
+                    destination[destIndex++] = curr;
+                }
             }
 
             return destination.Slice(0, destIndex).ToString();
         }
         finally
         {
-            if (rentedArray != null)
-            {
-                ArrayPool<char>.Shared.Return(rentedArray);
-            }
+            if (rentedArray != null) ArrayPool<char>.Shared.Return(rentedArray);
         }
     }
 
@@ -234,6 +230,10 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
         public bool IsLeaf;
         public string? FullKey;
         public string? DataType;
-        public Node(string name) => Name = name;
+
+        public Node(string name)
+        {
+            Name = name;
+        }
     }
 }

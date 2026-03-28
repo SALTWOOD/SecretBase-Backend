@@ -13,31 +13,31 @@ public class UserCredentialConfiguration : IEntityTypeConfiguration<UserCredenti
         builder.HasKey(x => x.Id);
 
         builder.HasIndex(x => x.CredentialId)
-               .IsUnique()
-               .HasDatabaseName("unique_user_credentials_credentialid");
+            .IsUnique()
+            .HasDatabaseName("unique_user_credentials_credentialid");
 
         builder.Property(x => x.CredentialId)
-               .HasColumnType("bytea")
-               .IsRequired();
+            .HasColumnType("bytea")
+            .IsRequired();
 
         builder.Property(x => x.PublicKey)
-               .HasColumnType("bytea")
-               .IsRequired();
+            .HasColumnType("bytea")
+            .IsRequired();
 
         builder.Property(x => x.SignatureCounter)
-               .HasColumnType("bigint")
-               .IsRequired();
+            .HasColumnType("bigint")
+            .IsRequired();
 
         builder.Property(x => x.Nickname)
-               .HasMaxLength(100);
+            .HasMaxLength(100);
 
         builder.Property(x => x.CreatedAt)
-               .HasColumnType("timestamptz")
-               .HasDefaultValueSql("CURRENT_TIMESTAMP");
+            .HasColumnType("timestamptz")
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
         builder.HasOne<User>()
-               .WithMany()
-               .HasForeignKey(x => x.UserId)
-               .OnDelete(DeleteBehavior.Cascade);
+            .WithMany()
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

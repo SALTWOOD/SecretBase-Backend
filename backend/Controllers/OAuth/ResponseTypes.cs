@@ -19,10 +19,7 @@ public static class OAuthAppValidator
 
         if (string.IsNullOrWhiteSpace(displayName))
         {
-            if (isRequired)
-            {
-                results.Add(new ValidationResult("DisplayName is required."));
-            }
+            if (isRequired) results.Add(new ValidationResult("DisplayName is required."));
         }
         else if (displayName.Length > MaxDisplayNameLength)
         {
@@ -42,9 +39,7 @@ public static class OAuthAppValidator
         if (redirectUris != null && redirectUris.Count > 0)
         {
             if (redirectUris.Count > MaxRedirectUris)
-            {
                 results.Add(new ValidationResult($"Cannot have more than {MaxRedirectUris} redirect URIs."));
-            }
 
             foreach (var uri in redirectUris)
             {
@@ -56,15 +51,11 @@ public static class OAuthAppValidator
 
                 // Only allow http/https schemes
                 if (parsedUri.Scheme != Uri.UriSchemeHttp && parsedUri.Scheme != Uri.UriSchemeHttps)
-                {
                     results.Add(new ValidationResult($"Redirect URI must use http or https scheme: {uri}"));
-                }
 
                 // For non-native apps, require HTTPS in production
                 if (applicationType?.ToLowerInvariant() != "native" && parsedUri.Scheme == Uri.UriSchemeHttp)
-                {
                     results.Add(new ValidationResult($"Redirect URI must use HTTPS for web applications: {uri}"));
-                }
             }
         }
 
@@ -82,9 +73,7 @@ public static class OAuthAppValidator
         {
             var clientTypeLower = clientType.ToLowerInvariant();
             if (clientTypeLower != "public" && clientTypeLower != "confidential")
-            {
                 results.Add(new ValidationResult("ClientType must be 'public' or 'confidential'."));
-            }
         }
 
         return results;
@@ -101,9 +90,7 @@ public static class OAuthAppValidator
         {
             var appTypeLower = applicationType.ToLowerInvariant();
             if (appTypeLower != "web" && appTypeLower != "native")
-            {
                 results.Add(new ValidationResult("ApplicationType must be 'web' or 'native'."));
-            }
         }
 
         return results;
@@ -118,7 +105,10 @@ public static class OAuthAppValidator
 /// <param name="ClientType">Client type: "public" or "confidential" (default: "confidential")</param>
 /// <param name="ApplicationType">Application type: "web" or "native" (default: "web")</param>
 public record CreateAppRequest(
-    [Required, MinLength(1), MaxLength(100)] string DisplayName,
+    [Required]
+    [MinLength(1)]
+    [MaxLength(100)]
+    string DisplayName,
     List<string>? RedirectUris,
     string? ClientType = "confidential",
     string? ApplicationType = "web"
@@ -128,7 +118,7 @@ public record CreateAppRequest(
     {
         var results = new List<ValidationResult>();
 
-        results.AddRange(OAuthAppValidator.ValidateDisplayName(DisplayName, isRequired: true));
+        results.AddRange(OAuthAppValidator.ValidateDisplayName(DisplayName, true));
         results.AddRange(OAuthAppValidator.ValidateRedirectUris(RedirectUris, ApplicationType));
         results.AddRange(OAuthAppValidator.ValidateClientType(ClientType));
         results.AddRange(OAuthAppValidator.ValidateApplicationType(ApplicationType));
@@ -174,7 +164,10 @@ public record OAuthAppDetailResponse
 /// <param name="ClientType">Client type: "public" or "confidential"</param>
 /// <param name="ApplicationType">Application type: "web" or "native"</param>
 public record UpdateAppRequest(
-    [Required, MinLength(1), MaxLength(100)] string DisplayName,
+    [Required]
+    [MinLength(1)]
+    [MaxLength(100)]
+    string DisplayName,
     List<string>? RedirectUris,
     string? ClientType = null,
     string? ApplicationType = null
@@ -184,7 +177,7 @@ public record UpdateAppRequest(
     {
         var results = new List<ValidationResult>();
 
-        results.AddRange(OAuthAppValidator.ValidateDisplayName(DisplayName, isRequired: true));
+        results.AddRange(OAuthAppValidator.ValidateDisplayName(DisplayName, true));
         results.AddRange(OAuthAppValidator.ValidateRedirectUris(RedirectUris, ApplicationType));
         results.AddRange(OAuthAppValidator.ValidateClientType(ClientType));
         results.AddRange(OAuthAppValidator.ValidateApplicationType(ApplicationType));
@@ -212,10 +205,7 @@ public record PatchAppRequest(
         var results = new List<ValidationResult>();
 
         // For PATCH, DisplayName is optional but if provided must be valid
-        if (DisplayName != null)
-        {
-            results.AddRange(OAuthAppValidator.ValidateDisplayName(DisplayName, isRequired: false));
-        }
+        if (DisplayName != null) results.AddRange(OAuthAppValidator.ValidateDisplayName(DisplayName, false));
 
         results.AddRange(OAuthAppValidator.ValidateRedirectUris(RedirectUris, ApplicationType));
         results.AddRange(OAuthAppValidator.ValidateClientType(ClientType));

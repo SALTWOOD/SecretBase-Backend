@@ -9,8 +9,8 @@ public static class Utils
 {
     public static string GenerateRandomSecret(int length = 24)
     {
-        char[] chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".ToCharArray();
-        string randomString = new string(RandomNumberGenerator.GetItems(chars, length));
+        var chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".ToCharArray();
+        var randomString = new string(RandomNumberGenerator.GetItems(chars, length));
         return randomString;
     }
 
@@ -24,14 +24,15 @@ public static class Utils
     public static async Task<Invite?> GetInvite(AppDbContext db, string? code, bool doIncrement = true)
     {
         if (string.IsNullOrEmpty(code)) return null;
-        Invite? invite = await db.Invites
+        var invite = await db.Invites
             .FirstOrDefaultAsync(it => it.Code == code);
-        
+
         if (doIncrement && invite != null && invite.IsValid)
         {
             invite.UsedCount++;
             await db.SaveChangesAsync();
         }
+
         return invite;
     }
 }

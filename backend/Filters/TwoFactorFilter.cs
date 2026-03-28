@@ -13,7 +13,9 @@ namespace backend.Filters;
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class)]
 public class Require2FAAttribute : ServiceFilterAttribute
 {
-    public Require2FAAttribute() : base(typeof(TwoFactorFilter)) { }
+    public Require2FAAttribute() : base(typeof(TwoFactorFilter))
+    {
+    }
 }
 
 public class TwoFactorFilter : IAsyncActionFilter
@@ -33,7 +35,7 @@ public class TwoFactorFilter : IAsyncActionFilter
     {
         var httpContext = context.HttpContext;
         var userIdClaim = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int id))
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var id))
         {
             context.Result = new UnauthorizedResult();
             return;

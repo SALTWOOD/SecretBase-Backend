@@ -16,13 +16,16 @@ public readonly record struct TwoFactorPolicyResponse(
     TwoFactorStatus Totp,
     bool ForceTwoFactor
 );
+
 public readonly record struct TwoFactorStatus(bool Enabled);
 
 [ApiController]
 [Route("auth/two-factor/policy")]
 public class TwoFactorPolicyController : BaseApiController
 {
-    public TwoFactorPolicyController(BaseServices deps) : base(deps) { }
+    public TwoFactorPolicyController(BaseServices deps) : base(deps)
+    {
+    }
 
     [HttpGet]
     [Authorize]
@@ -47,12 +50,14 @@ public class TwoFactorPolicyController : BaseApiController
         var user = await CurrentUser;
         if (user == null) return Unauthorized();
 
-        bool is2faReady = !string.IsNullOrEmpty(user.TotpSecret);
+        var is2faReady = !string.IsNullOrEmpty(user.TotpSecret);
         if (!is2faReady) is2faReady = await _db.UserCredentials.AnyAsync(it => it.UserId == user.Id);
 
-        if (!is2faReady) return BadRequest(new MessageResponse { Message = "Please set up at least one 2FA method..." });
+        if (!is2faReady)
+            return BadRequest(new MessageResponse { Message = "Please set up at least one 2FA method..." });
 
-        if (user.ForceTwoFactor) return BadRequest(new MessageResponse { Message = "2FA is already enforced for this account" });
+        if (user.ForceTwoFactor)
+            return BadRequest(new MessageResponse { Message = "2FA is already enforced for this account" });
 
         var codesWithHashes = GenerateRecoveryCodes(10).ToList();
         var rawCodes = codesWithHashes.Select(x => x.Code).ToArray();
@@ -79,10 +84,7 @@ public class TwoFactorPolicyController : BaseApiController
         var user = await CurrentUser;
         if (user == null) return Unauthorized();
 
-        if (!user.ForceTwoFactor)
-        {
-            return BadRequest(new MessageResponse { Message = "2FA enforcement is not enabled" });
-        }
+        if (!user.ForceTwoFactor) return BadRequest(new MessageResponse { Message = "2FA enforcement is not enabled" });
 
         user.ForceTwoFactor = false;
         user.TotpRecoveryCodes = null;
@@ -96,16 +98,16 @@ public class TwoFactorPolicyController : BaseApiController
 
     private static IEnumerable<(string Code, string Hash)> GenerateRecoveryCodes(int count)
     {
-        for (int i = 0; i < count; i++)
+        for (var i = 0; i < count; i++)
         {
-            string code = RandomNumberGenerator.GetInt32(1000_0000, 1_0000_0000).ToString();
+            var code = RandomNumberGenerator.GetInt32(1000_0000, 1_0000_0000).ToString();
             yield return (code, HashCode(code));
         }
     }
 
     private static string HashCode(string code)
     {
-        byte[] bytes = SHA256.HashData(Encoding.UTF8.GetBytes(code));
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(code));
         return Convert.ToHexString(bytes);
     }
 

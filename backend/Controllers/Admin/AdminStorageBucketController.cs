@@ -47,10 +47,10 @@ public class AdminStorageBucketController : BaseApiController
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> ListFiles(
-        [FromQuery] string? prefix = null, 
+        [FromQuery] string? prefix = null,
         [FromQuery] int maxKeys = 100,
         [FromQuery] bool recursive = false
-        )
+    )
     {
         try
         {
@@ -63,11 +63,11 @@ public class AdminStorageBucketController : BaseApiController
             };
 
             var response = await _s3Client.ListObjectsV2Async(request);
-            
+
             var folders = (response.CommonPrefixes ?? Enumerable.Empty<string>())
                 .Select(key => new S3ObjectResponse
                 {
-                    Key = key,
+                    Key = key
                 });
 
             var files = (response.S3Objects ?? Enumerable.Empty<S3Object>())
@@ -85,7 +85,7 @@ public class AdminStorageBucketController : BaseApiController
         catch (AmazonS3Exception ex)
         {
             _logger.LogError(ex, "Failed to list files from S3 bucket {BucketName}", BucketName);
-            return StatusCode(StatusCodes.Status500InternalServerError, 
+            return StatusCode(StatusCodes.Status500InternalServerError,
                 new MessageResponse { Message = $"Failed to list files: {ex.Message}" });
         }
     }
@@ -182,10 +182,7 @@ public class AdminStorageBucketController : BaseApiController
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> DeleteFiles([FromBody] List<string> keys)
     {
-        if (keys == null || keys.Count == 0)
-        {
-            return BadRequest(new MessageResponse { Message = "No keys provided" });
-        }
+        if (keys == null || keys.Count == 0) return BadRequest(new MessageResponse { Message = "No keys provided" });
 
         try
         {
@@ -225,9 +222,7 @@ public class AdminStorageBucketController : BaseApiController
     public IActionResult GeneratePresignedUploadUrl([FromBody] PresignUploadRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Key))
-        {
             return BadRequest(new MessageResponse { Message = "Key is required" });
-        }
 
         try
         {
@@ -269,10 +264,7 @@ public class AdminStorageBucketController : BaseApiController
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public IActionResult GeneratePresignedDownloadUrl([FromQuery] string key, [FromQuery] int expirationMinutes = 15)
     {
-        if (string.IsNullOrWhiteSpace(key))
-        {
-            return BadRequest(new MessageResponse { Message = "Key is required" });
-        }
+        if (string.IsNullOrWhiteSpace(key)) return BadRequest(new MessageResponse { Message = "Key is required" });
 
         try
         {
@@ -314,9 +306,7 @@ public class AdminStorageBucketController : BaseApiController
     public async Task<IActionResult> CopyFile([FromBody] CopyFileRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.SourceKey) || string.IsNullOrWhiteSpace(request.DestinationKey))
-        {
             return BadRequest(new MessageResponse { Message = "SourceKey and DestinationKey are required" });
-        }
 
         try
         {
@@ -330,7 +320,8 @@ public class AdminStorageBucketController : BaseApiController
 
             await _s3Client.CopyObjectAsync(copyRequest);
 
-            return Ok(new MessageResponse { Message = $"File copied from '{request.SourceKey}' to '{request.DestinationKey}'" });
+            return Ok(new MessageResponse
+                { Message = $"File copied from '{request.SourceKey}' to '{request.DestinationKey}'" });
         }
         catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
@@ -338,7 +329,8 @@ public class AdminStorageBucketController : BaseApiController
         }
         catch (AmazonS3Exception ex)
         {
-            _logger.LogError(ex, "Failed to copy file from {SourceKey} to {DestinationKey}", request.SourceKey, request.DestinationKey);
+            _logger.LogError(ex, "Failed to copy file from {SourceKey} to {DestinationKey}", request.SourceKey,
+                request.DestinationKey);
             return StatusCode(StatusCodes.Status500InternalServerError,
                 new MessageResponse { Message = $"Failed to copy file: {ex.Message}" });
         }
@@ -371,7 +363,7 @@ public class AdminStorageBucketController : BaseApiController
             };
 
             long totalSize = 0;
-            int objectCount = 0;
+            var objectCount = 0;
 
             ListObjectsV2Response listResponse;
             do

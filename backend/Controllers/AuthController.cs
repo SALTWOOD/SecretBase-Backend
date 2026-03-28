@@ -22,20 +22,18 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
     public async Task<IActionResult> Login([FromBody] AuthLoginModel model)
     {
         // query User
-        User? user = await _db.Users
+        var user = await _db.Users
             .FirstOrDefaultAsync(u => u.Email == model.Email);
 
         // check for password
         if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
-        {
             return BadRequest(new MessageResponse("Invalid email or password."));
-        }
 
         var autoRenew = await SettingRegistry.Site.Security.Cookie.AutoRenew;
 
         if (user.ForceTwoFactor)
         {
-            int expires = await RefreshTokenAsync(user, TokenPermissionLevel.None);
+            var expires = await RefreshTokenAsync(user, TokenPermissionLevel.None);
             DateTime? expiresValue = autoRenew ? DateTime.UtcNow.AddHours(expires) : null;
 
             return Ok(new AuthResponse
@@ -52,7 +50,7 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
         else
         {
             await UpdateLastLoginAsync(user, HttpContext);
-            int expires = await RefreshTokenAsync(user, TokenPermissionLevel.Full);
+            var expires = await RefreshTokenAsync(user, TokenPermissionLevel.Full);
             DateTime? expiresValue = autoRenew ? DateTime.UtcNow.AddHours(expires) : null;
 
             return Ok(new AuthResponse
@@ -73,12 +71,10 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
     public async Task<IActionResult> Logout([FromServices] SessionService sessionService)
     {
         if (Request.Cookies.TryGetValue(Constants.AUTH_TOKEN_COOKIE_NAME, out var token))
-        {
             // revoke token
             await sessionService.RemoveSessionAsync(token);
-        }
 
-        CookieOptions options = new CookieOptions
+        var options = new CookieOptions
         {
             HttpOnly = true,
             Secure = Request.IsHttps,
@@ -96,7 +92,7 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Register([FromBody] AuthRegisterModel model)
     {
-        bool enabled = await SettingRegistry.Site.User.Registration.Enabled;
+        var enabled = await SettingRegistry.Site.User.Registration.Enabled;
         if (!enabled)
             return StatusCode(
                 StatusCodes.Status403Forbidden,
@@ -104,24 +100,24 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
             );
 
 
-        bool forceInvitation = await SettingRegistry.Site.User.Registration.ForceInvitation;
-        Invite? invite = await Utils.GetInvite(_db, model.InviteCode);
+        var forceInvitation = await SettingRegistry.Site.User.Registration.ForceInvitation;
+        var invite = await Utils.GetInvite(_db, model.InviteCode);
         if (forceInvitation && invite == null)
             return StatusCode(
                 StatusCodes.Status403Forbidden,
                 new MessageResponse("An invitation is required to register.")
             );
 
-        bool emailExists = await _db.Users
+        var emailExists = await _db.Users
             .AnyAsync(u => u.Email == model.Email);
         if (emailExists) return BadRequest(new MessageResponse("Email is already registered."));
 
-        bool usernameExists = await _db.Users
+        var usernameExists = await _db.Users
             .AnyAsync(u => u.Username == model.Username);
         if (usernameExists) return BadRequest(new MessageResponse("Username is already taken."));
 
         // create User
-        User newUser = new User
+        var newUser = new User
         {
             Username = model.Username,
             Email = model.Email,
@@ -150,13 +146,10 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
             .Where(u => u.Id == CurrentUserId)
             .Select(u => new User { Id = u.Id, Username = u.Username, Role = u.Role })
             .FirstOrDefaultAsync();
-        if (user == null)
-        {
-            return Unauthorized(new { message = "User not found." });
-        }
+        if (user == null) return Unauthorized(new { message = "User not found." });
 
         await UpdateLastLoginAsync(user, HttpContext);
-        int expires = await RefreshTokenAsync(user);
+        var expires = await RefreshTokenAsync(user);
         var autoRenew = await SettingRegistry.Site.Security.Cookie.AutoRenew;
         DateTime? expiresValue = autoRenew ? DateTime.UtcNow.AddHours(expires) : null;
 

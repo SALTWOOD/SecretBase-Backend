@@ -10,8 +10,7 @@ public class User
 
     public string Email { get; set; } = string.Empty;
 
-    [JsonIgnore]
-    public string PasswordHash { get; set; } = string.Empty;
+    [JsonIgnore] public string PasswordHash { get; set; } = string.Empty;
 
     public UserRole Role { get; set; } = UserRole.User;
 
@@ -22,22 +21,17 @@ public class User
 
     public string Avatar { get; set; } = string.Empty;
 
-    [JsonIgnore]
-    public LastLogin? LastLoginInfo { get; set; }
+    [JsonIgnore] public LastLogin? LastLoginInfo { get; set; }
 
     public int? UsedInviteId { get; set; }
 
-    [JsonIgnore]
-    public string? TotpSecret { get; set; }
+    [JsonIgnore] public string? TotpSecret { get; set; }
 
-    [JsonIgnore]
-    public string[]? TotpRecoveryCodes { get; set; }
+    [JsonIgnore] public string[]? TotpRecoveryCodes { get; set; }
 
-    [JsonIgnore]
-    public bool ForceTwoFactor { get; set; }
+    [JsonIgnore] public bool ForceTwoFactor { get; set; }
 
-    [JsonIgnore]
-    public List<Invite> MyIssuedInvites { get; set; } = new();
+    [JsonIgnore] public List<Invite> MyIssuedInvites { get; set; } = new();
 }
 
 public class LastLogin

@@ -25,13 +25,9 @@ public class SafeRedisAccess
     public async Task SetAsync(string key, string value, int? expirySeconds = null)
     {
         if (expirySeconds.HasValue)
-        {
             await _redis.StringSetAsync(_keyPrefix + key, value, TimeSpan.FromSeconds(expirySeconds.Value));
-        }
         else
-        {
             await _redis.StringSetAsync(_keyPrefix + key, value);
-        }
     }
 
     public async Task DeleteAsync(string key)

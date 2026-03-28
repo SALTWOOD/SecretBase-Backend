@@ -66,9 +66,9 @@ public class SettingsController(BaseServices deps) : BaseApiController(deps)
     public async Task<ActionResult<SiteInitResponse>> GetSiteInit()
     {
         return Ok(new SiteInitResponse(
-            Seo: await SettingRegistry.Site.Seo.GetValuesAsync(),
-            Home: await SettingRegistry.Site.Home.GetValuesAsync(),
-            RegistrationEnabled: await SettingRegistry.Site.User.Registration.Enabled
+            await SettingRegistry.Site.Seo.GetValuesAsync(),
+            await SettingRegistry.Site.Home.GetValuesAsync(),
+            await SettingRegistry.Site.User.Registration.Enabled
         ));
     }
 }

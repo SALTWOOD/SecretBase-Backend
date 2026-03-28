@@ -54,9 +54,7 @@ public class ShortcodeController : BaseApiController
         var code = await _shortcodeService.GetFrontendCodeAsync(name);
 
         if (code == null)
-        {
             return NotFound(new MessageResponse { Message = $"Shortcode '{name}' not found or is disabled" });
-        }
 
         return Content(code, MediaTypeNames.Text.JavaScript);
     }

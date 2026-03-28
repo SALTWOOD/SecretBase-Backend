@@ -10,10 +10,10 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
     {
         // 记录请求开始时间
         var stopwatch = Stopwatch.StartNew();
-        
+
         // 读取请求体（需要重置流以便后续处理）
-        string requestBody = await ReadRequestBodyAsync(context);
-        
+        var requestBody = await ReadRequestBodyAsync(context);
+
         // 记录请求信息
         var requestInfo = new
         {
@@ -37,7 +37,7 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
             IsAuthenticated = context.User?.Identity?.IsAuthenticated ?? false
         };
 
-        logger.LogInformation("=== HTTP REQUEST ===\n{RequestInfo}", 
+        logger.LogInformation("=== HTTP REQUEST ===\n{RequestInfo}",
             JsonSerializer.Serialize(requestInfo, new JsonSerializerOptions { WriteIndented = true }));
 
         // 捕获响应
@@ -59,8 +59,8 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
 
         // 读取响应体
         memoryStream.Seek(0, SeekOrigin.Begin);
-        string responseBody = await new StreamReader(memoryStream).ReadToEndAsync();
-        
+        var responseBody = await new StreamReader(memoryStream).ReadToEndAsync();
+
         // 重置流并复制响应
         memoryStream.Seek(0, SeekOrigin.Begin);
         await memoryStream.CopyToAsync(originalBodyStream);
@@ -79,19 +79,16 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
             DurationFormatted = stopwatch.Elapsed.ToString(@"hh\:mm\:ss\.fff")
         };
 
-        logger.LogInformation("=== HTTP RESPONSE ===\n{ResponseInfo}", 
+        logger.LogInformation("=== HTTP RESPONSE ===\n{ResponseInfo}",
             JsonSerializer.Serialize(responseInfo, new JsonSerializerOptions { WriteIndented = true }));
-        
+
         logger.LogInformation("=== REQUEST COMPLETED IN {Duration}ms ===", stopwatch.ElapsedMilliseconds);
     }
 
     private async Task<string> ReadRequestBodyAsync(HttpContext context)
     {
         // 如果请求体为空或已经被读取过，返回空字符串
-        if (context.Request.ContentLength == 0 || context.Request.ContentLength == null)
-        {
-            return string.Empty;
-        }
+        if (context.Request.ContentLength == 0 || context.Request.ContentLength == null) return string.Empty;
 
         // 对于某些内容类型（如 multipart/form-data），不尝试读取请求体
         if (context.Request.ContentType != null &&
@@ -99,9 +96,7 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
              context.Request.ContentType.Contains("image/") ||
              context.Request.ContentType.Contains("video/") ||
              context.Request.ContentType.Contains("audio/")))
-        {
             return $"[Body content not logged for Content-Type: {context.Request.ContentType}]";
-        }
 
         try
         {
@@ -109,10 +104,10 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
 
             using var reader = new StreamReader(
                 context.Request.Body,
-                encoding: Encoding.UTF8,
-                detectEncodingFromByteOrderMarks: false,
-                bufferSize: 1024,
-                leaveOpen: true);
+                Encoding.UTF8,
+                false,
+                1024,
+                true);
 
             var body = await reader.ReadToEndAsync();
             context.Request.Body.Position = 0;
@@ -120,9 +115,7 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
             // 如果请求体太大，截断显示
             const int maxBodyLength = 10000;
             if (body.Length > maxBodyLength)
-            {
                 return body.Substring(0, maxBodyLength) + $"... [truncated, total length: {body.Length}]";
-            }
 
             return body;
         }
@@ -144,13 +137,9 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
         {
             var headerKey = header.Key.ToLowerInvariant();
             if (sensitiveHeaders.Any(sh => headerKey.Contains(sh)))
-            {
                 result[header.Key] = "[REDACTED]";
-            }
             else
-            {
                 result[header.Key] = header.Value.ToString();
-            }
         }
 
         return result;
@@ -168,13 +157,9 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
         {
             var cookieKey = cookie.Key.ToLowerInvariant();
             if (sensitiveCookies.Any(sc => cookieKey.Contains(sc)))
-            {
                 result[cookie.Key] = "[REDACTED]";
-            }
             else
-            {
                 result[cookie.Key] = cookie.Value;
-            }
         }
 
         return result;
@@ -185,18 +170,13 @@ public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggi
     /// </summary>
     private static string RedactSensitiveBody(string body)
     {
-        if (string.IsNullOrEmpty(body))
-        {
-            return body;
-        }
+        if (string.IsNullOrEmpty(body)) return body;
 
         var lowerBody = body.ToLowerInvariant();
-        var sensitiveKeywords = new[] { "password", "secret", "token", "api_key", "apikey", "authorization", "credential" };
+        var sensitiveKeywords = new[]
+            { "password", "secret", "token", "api_key", "apikey", "authorization", "credential" };
 
-        if (sensitiveKeywords.Any(kw => lowerBody.Contains(kw)))
-        {
-            return "[SENSITIVE CONTENT REDACTED]";
-        }
+        if (sensitiveKeywords.Any(kw => lowerBody.Contains(kw))) return "[SENSITIVE CONTENT REDACTED]";
 
         return body;
     }

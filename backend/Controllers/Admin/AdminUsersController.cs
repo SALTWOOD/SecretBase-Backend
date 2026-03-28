@@ -48,10 +48,7 @@ public class UserAdminController(BaseServices deps) : BaseApiController(deps)
         // Get current user information
         var user = await CurrentUser;
 
-        if (user == null)
-        {
-            return Unauthorized(new { message = "Current user not found" });
-        }
+        if (user == null) return Unauthorized(new { message = "Current user not found" });
 
         // Get target user information
         var targetUser = await _db.Users
@@ -59,21 +56,14 @@ public class UserAdminController(BaseServices deps) : BaseApiController(deps)
             .Select(u => new { u.Id, u.Role })
             .FirstOrDefaultAsync();
 
-        if (targetUser == null)
-        {
-            return NotFound(new { message = $"User with ID {id} not found" });
-        }
+        if (targetUser == null) return NotFound(new { message = $"User with ID {id} not found" });
 
-        if (user.Id == targetUser.Id)
-        {
-            return BadRequest(new MessageResponse { Message = "Cannot ban yourself!" });
-        }
+        if (user.Id == targetUser.Id) return BadRequest(new MessageResponse { Message = "Cannot ban yourself!" });
 
         // Check permission: can only operate on users with lower role level than oneself
         if (targetUser.Role >= user.Role)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new MessageResponse { Message = "Cannot modify users with equal or higher role level" });
-        }
+            return StatusCode(StatusCodes.Status403Forbidden,
+                new MessageResponse { Message = "Cannot modify users with equal or higher role level" });
 
         var rowsAffected = await _db.Users
             .Where(u => u.Id == id)

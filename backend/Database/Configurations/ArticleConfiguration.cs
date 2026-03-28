@@ -17,22 +17,22 @@ public class ArticleConfiguration : IEntityTypeConfiguration<Article>
         builder.Property(x => x.AuthorId).IsRequired();
 
         builder.Property(x => x.CreatedAt)
-               .HasColumnType("timestamptz")
-               .HasDefaultValueSql("CURRENT_TIMESTAMP");
+            .HasColumnType("timestamptz")
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
         builder.Property(x => x.UpdatedAt)
-               .HasColumnType("timestamptz")
-               .HasDefaultValueSql("CURRENT_TIMESTAMP");
+            .HasColumnType("timestamptz")
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
         builder.HasOne(x => x.Author)
-               .WithMany()
-               .HasForeignKey(x => x.AuthorId)
-               .OnDelete(DeleteBehavior.Cascade);
+            .WithMany()
+            .HasForeignKey(x => x.AuthorId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasMany(x => x.Comments)
-               .WithOne(x => x.Article)
-               .HasForeignKey(x => x.ArticleId)
-               .OnDelete(DeleteBehavior.Cascade);
+            .WithOne(x => x.Article)
+            .HasForeignKey(x => x.ArticleId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(x => x.AuthorId);
         builder.HasIndex(x => x.CreatedAt);

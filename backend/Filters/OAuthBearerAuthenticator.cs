@@ -25,47 +25,31 @@ public class OAuthBearerAuthenticator : AuthenticationHandler<AuthenticationSche
     {
         // 1. 从 Authorization header 提取 Bearer token
         string? authorizationHeader = Request.Headers.Authorization;
-        
-        if (string.IsNullOrEmpty(authorizationHeader))
-        {
-            return AuthenticateResult.NoResult();
-        }
+
+        if (string.IsNullOrEmpty(authorizationHeader)) return AuthenticateResult.NoResult();
 
         if (!authorizationHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-        {
             return AuthenticateResult.NoResult();
-        }
 
         var token = authorizationHeader.Substring("Bearer ".Length).Trim();
-        
-        if (string.IsNullOrEmpty(token))
-        {
-            return AuthenticateResult.Fail("Invalid bearer token format");
-        }
+
+        if (string.IsNullOrEmpty(token)) return AuthenticateResult.Fail("Invalid bearer token format");
 
         // 2. 使用 OpenIddict 验证 token
-        var authenticateResult = await Context.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+        var authenticateResult =
+            await Context.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
 
-        if (authenticateResult?.Principal == null)
-        {
-            return AuthenticateResult.Fail("Invalid or expired access token");
-        }
+        if (authenticateResult?.Principal == null) return AuthenticateResult.Fail("Invalid or expired access token");
 
         // 3. 检查是否是 access token 类型
         var tokenType = authenticateResult.Principal.FindFirst("token_type")?.Value;
-        if (tokenType != "access_token")
-        {
-            return AuthenticateResult.Fail("Token is not an access token");
-        }
+        if (tokenType != "access_token") return AuthenticateResult.Fail("Token is not an access token");
 
         // 4. 获取用户信息并构建 ClaimsPrincipal
         var subject = authenticateResult.Principal.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? authenticateResult.Principal.FindFirst("sub")?.Value;
+                      ?? authenticateResult.Principal.FindFirst("sub")?.Value;
 
-        if (string.IsNullOrEmpty(subject))
-        {
-            return AuthenticateResult.Fail("Token does not contain subject claim");
-        }
+        if (string.IsNullOrEmpty(subject)) return AuthenticateResult.Fail("Token does not contain subject claim");
 
         // 5. 提取 scopes
         var scopes = authenticateResult.Principal.FindAll("scope").Select(c => c.Value).ToList();
@@ -73,35 +57,26 @@ public class OAuthBearerAuthenticator : AuthenticationHandler<AuthenticationSche
         // 6. 构建 OAuth 认证的 ClaimsIdentity
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, subject),
-            new Claim("auth_type", "oauth")
+            new(ClaimTypes.NameIdentifier, subject),
+            new("auth_type", "oauth")
         };
 
         // 添加 scope claims
-        foreach (var scope in scopes)
-        {
-            claims.Add(new Claim("scope", scope));
-        }
+        foreach (var scope in scopes) claims.Add(new Claim("scope", scope));
 
         // 复制其他有用的 claims
         var email = authenticateResult.Principal.FindFirst(ClaimTypes.Email)?.Value
-            ?? authenticateResult.Principal.FindFirst("email")?.Value;
-        if (!string.IsNullOrEmpty(email))
-        {
-            claims.Add(new Claim(ClaimTypes.Email, email));
-        }
+                    ?? authenticateResult.Principal.FindFirst("email")?.Value;
+        if (!string.IsNullOrEmpty(email)) claims.Add(new Claim(ClaimTypes.Email, email));
 
         var name = authenticateResult.Principal.FindFirst(ClaimTypes.Name)?.Value
-            ?? authenticateResult.Principal.FindFirst("name")?.Value;
-        if (!string.IsNullOrEmpty(name))
-        {
-            claims.Add(new Claim(ClaimTypes.Name, name));
-        }
+                   ?? authenticateResult.Principal.FindFirst("name")?.Value;
+        if (!string.IsNullOrEmpty(name)) claims.Add(new Claim(ClaimTypes.Name, name));
 
         var identity = new ClaimsIdentity(claims, SchemeName);
         var principal = new ClaimsPrincipal(identity);
 
-        Logger.LogDebug("OAuth Bearer token validated for user {Subject} with scopes {Scopes}", 
+        Logger.LogDebug("OAuth Bearer token validated for user {Subject} with scopes {Scopes}",
             subject, string.Join(", ", scopes));
 
         return AuthenticateResult.Success(new AuthenticationTicket(principal, SchemeName));

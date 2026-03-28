@@ -21,7 +21,7 @@ public class AdminStorageController : BaseApiController
     private readonly IAmazonS3 _s3Client;
     private readonly IConfiguration _configuration;
     private readonly ILogger<AdminStorageBucketController> _logger;
-    
+
     public AdminStorageController(
         BaseServices deps,
         IAmazonS3 s3Client,
@@ -46,11 +46,11 @@ public class AdminStorageController : BaseApiController
         try
         {
             var response = await _s3Client.ListBucketsAsync();
-            
+
             var buckets = response.Buckets.Select(b => new BucketResponse
             {
                 Name = b.BucketName,
-                CreationDate = b.CreationDate ?? DateTime.MinValue,
+                CreationDate = b.CreationDate ?? DateTime.MinValue
             }).ToList();
 
             return Ok(buckets);
@@ -75,7 +75,7 @@ public class AdminStorageController : BaseApiController
         try
         {
             var response = await _s3Client.ListBucketsAsync();
-            
+
             return Ok(new StorageStatusResponse
             {
                 IsConnected = true,

@@ -53,10 +53,7 @@ public class AdminShortcodeController : BaseApiController
     {
         var shortcode = await _shortcodeService.GetShortcodeByIdAsync(id);
 
-        if (shortcode == null)
-        {
-            return NotFound(new MessageResponse { Message = $"Shortcode with ID {id} not found" });
-        }
+        if (shortcode == null) return NotFound(new MessageResponse { Message = $"Shortcode with ID {id} not found" });
 
         return Ok(shortcode);
     }
@@ -73,10 +70,7 @@ public class AdminShortcodeController : BaseApiController
     public async Task<IActionResult> CreateShortcode([FromBody] ShortcodeCreateModel model)
     {
         var user = await CurrentUser;
-        if (user == null)
-        {
-            return Unauthorized(new MessageResponse { Message = "Current user not found" });
-        }
+        if (user == null) return Unauthorized(new MessageResponse { Message = "Current user not found" });
 
         try
         {
@@ -108,10 +102,7 @@ public class AdminShortcodeController : BaseApiController
     {
         var shortcode = await _shortcodeService.UpdateShortcodeAsync(id, model);
 
-        if (shortcode == null)
-        {
-            return NotFound(new MessageResponse { Message = $"Shortcode with ID {id} not found" });
-        }
+        if (shortcode == null) return NotFound(new MessageResponse { Message = $"Shortcode with ID {id} not found" });
 
         return Ok(shortcode);
     }
@@ -130,10 +121,7 @@ public class AdminShortcodeController : BaseApiController
     {
         var shortcode = await _shortcodeService.UpdateShortcodeStatusAsync(id, model.IsEnabled);
 
-        if (shortcode == null)
-        {
-            return NotFound(new MessageResponse { Message = $"Shortcode with ID {id} not found" });
-        }
+        if (shortcode == null) return NotFound(new MessageResponse { Message = $"Shortcode with ID {id} not found" });
 
         return Ok(shortcode);
     }
@@ -151,10 +139,7 @@ public class AdminShortcodeController : BaseApiController
     {
         var deleted = await _shortcodeService.DeleteShortcodeAsync(id);
 
-        if (!deleted)
-        {
-            return NotFound(new MessageResponse { Message = $"Shortcode with ID {id} not found" });
-        }
+        if (!deleted) return NotFound(new MessageResponse { Message = $"Shortcode with ID {id} not found" });
 
         return NoContent();
     }

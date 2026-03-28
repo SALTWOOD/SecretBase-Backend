@@ -51,7 +51,7 @@ public class ShortcodeSandbox
 
             var request = CreateRequestObject(engine, requestBody, headers, query, currentUser);
             var jsValue = await engine.InvokeAsync(handlerName, request);
-            
+
             if (jsValue.IsPromise())
                 jsValue = jsValue.UnwrapIfPromise();
 
@@ -81,10 +81,7 @@ public class ShortcodeSandbox
             engine.Execute(backendCode);
             var handlerValue = engine.GetValue(handlerName);
 
-            if (handlerValue == null || handlerValue == JsValue.Undefined)
-            {
-                return false;
-            }
+            if (handlerValue == null || handlerValue == JsValue.Undefined) return false;
 
             return handlerValue.IsObject();
         }
@@ -132,21 +129,37 @@ public class ShortcodeSandbox
     private class JintConsole
     {
         private readonly ILogger _logger;
-        public JintConsole(ILogger logger) => _logger = logger;
 
-        public void log(params object[] args) =>
+        public JintConsole(ILogger logger)
+        {
+            _logger = logger;
+        }
+
+        public void log(params object[] args)
+        {
             _logger.LogInformation("[Shortcode] {Args}", string.Join(", ", args));
+        }
 
-        public void info(params object[] args) => log(args);
+        public void info(params object[] args)
+        {
+            log(args);
+        }
 
-        public void warn(params object[] args) =>
+        public void warn(params object[] args)
+        {
             _logger.LogWarning("[Shortcode] {Args}", string.Join(", ", args));
+        }
 
-        public void error(params object[] args) =>
+        public void error(params object[] args)
+        {
             _logger.LogError("[Shortcode] {Args}", string.Join(", ", args));
+        }
     }
 
-    private object CreateSafeConsole() => new JintConsole(_logger);
+    private object CreateSafeConsole()
+    {
+        return new JintConsole(_logger);
+    }
 
     private JsValue CreateRequestObject(
         Engine engine,

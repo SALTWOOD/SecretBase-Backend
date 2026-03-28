@@ -24,6 +24,6 @@ public class Invite
 
     // Logic Property
     public bool IsValid => !IsDisabled &&
-                         UsedCount < MaxUses &&
-                         (!ExpireAt.HasValue || ExpireAt > DateTime.Now);
+                           UsedCount < MaxUses &&
+                           (!ExpireAt.HasValue || ExpireAt > DateTime.Now);
 }

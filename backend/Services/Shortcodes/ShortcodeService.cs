@@ -131,7 +131,6 @@ public class ShortcodeService
                 .FirstOrDefaultAsync(s => s.Name == name);
 
             if (shortcode == null)
-            {
                 return new ShortcodeExecutionResult
                 {
                     Success = false,
@@ -141,10 +140,8 @@ public class ShortcodeService
                         Message = $"Shortcode '{name}' not found"
                     }
                 };
-            }
 
             if (!shortcode.IsEnabled)
-            {
                 return new ShortcodeExecutionResult
                 {
                     Success = false,
@@ -154,22 +151,18 @@ public class ShortcodeService
                         Message = $"Shortcode '{name}' is disabled"
                     }
                 };
-            }
 
             // 验证权限
             var permissionError = CheckPermission(shortcode, currentUser);
             if (permissionError != null)
-            {
                 return new ShortcodeExecutionResult
                 {
                     Success = false,
                     Error = permissionError
                 };
-            }
 
             // 验证 handler 是否存在
             if (!_sandbox.HandlerExists(shortcode.BackendCode, handlerName))
-            {
                 return new ShortcodeExecutionResult
                 {
                     Success = false,
@@ -179,7 +172,6 @@ public class ShortcodeService
                         Message = $"Handler '{handlerName}' not found in shortcode '{name}'"
                     }
                 };
-            }
 
             // 执行 handler
             var result = await _sandbox.ExecuteHandlerAsync(
@@ -219,13 +211,15 @@ public class ShortcodeService
                 {
                     Code = "EXECUTION_ERROR",
                     Message = _env.IsDevelopment() ? ex.Message : "An error occurred while executing the handler",
-                    Details = _env.IsDevelopment() ? new
-                    {
-                        stack = ex.StackTrace,
-                        line = ex.Location.Start.Line,
-                        column = ex.Location.Start.Column,
-                        handlerName
-                    } : null
+                    Details = _env.IsDevelopment()
+                        ? new
+                        {
+                            stack = ex.StackTrace,
+                            line = ex.Location.Start.Line,
+                            column = ex.Location.Start.Column,
+                            handlerName
+                        }
+                        : null
                 }
             };
         }
@@ -267,7 +261,8 @@ public class ShortcodeService
         _db.Shortcodes.Add(shortcode);
         await _db.SaveChangesAsync();
 
-        return await GetShortcodeByIdAsync(shortcode.Id) ?? throw new InvalidOperationException("Failed to retrieve created shortcode");
+        return await GetShortcodeByIdAsync(shortcode.Id) ??
+               throw new InvalidOperationException("Failed to retrieve created shortcode");
     }
 
     /// <summary>
@@ -344,7 +339,8 @@ public class ShortcodeService
             ShortcodePermission.RoleRestricted => currentUser == null
                 ? new ShortcodeError { Code = "UNAUTHORIZED", Message = "Authentication required" }
                 : shortcode.AllowedRoles == null || !shortcode.AllowedRoles.Contains(currentUser.Role.ToString())
-                    ? new ShortcodeError { Code = "FORBIDDEN", Message = "You don't have permission to access this shortcode" }
+                    ? new ShortcodeError
+                        { Code = "FORBIDDEN", Message = "You don't have permission to access this shortcode" }
                     : null,
             _ => new ShortcodeError { Code = "FORBIDDEN", Message = "Unknown permission level" }
         };

@@ -39,10 +39,7 @@ public class AdminFileShareController : BaseApiController
     public async Task<IActionResult> Create([FromBody] FileShareCreateRequest request)
     {
         var currentUser = await CurrentUser;
-        if (currentUser == null)
-        {
-            return Unauthorized(new MessageResponse { Message = "User not authenticated" });
-        }
+        if (currentUser == null) return Unauthorized(new MessageResponse { Message = "User not authenticated" });
 
         // 生成短 ID
         var shortId = GenerateShortId();
@@ -63,7 +60,8 @@ public class AdminFileShareController : BaseApiController
         await _db.FileShares.AddAsync(fileShare);
         await _db.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(Get), new { shortId = fileShare.ShortId }, FileShareResponse.FromEntity(fileShare));
+        return CreatedAtAction(nameof(Get), new { shortId = fileShare.ShortId },
+            FileShareResponse.FromEntity(fileShare));
     }
 
     [HttpGet]
@@ -79,15 +77,9 @@ public class AdminFileShareController : BaseApiController
         {
             var query = _db.FileShares.AsQueryable();
 
-            if (!string.IsNullOrEmpty(bucket))
-            {
-                query = query.Where(f => f.Bucket == bucket);
-            }
+            if (!string.IsNullOrEmpty(bucket)) query = query.Where(f => f.Bucket == bucket);
 
-            if (isEnabled.HasValue)
-            {
-                query = query.Where(f => f.IsEnabled == isEnabled);
-            }
+            if (isEnabled.HasValue) query = query.Where(f => f.IsEnabled == isEnabled);
 
             var totalCount = await query.CountAsync();
             var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
@@ -122,10 +114,7 @@ public class AdminFileShareController : BaseApiController
         var fileShare = await _db.FileShares
             .FirstOrDefaultAsync(f => f.ShortId == shortId);
 
-        if (fileShare == null)
-        {
-            return NotFound(new MessageResponse { Message = $"File share '{shortId}' not found" });
-        }
+        if (fileShare == null) return NotFound(new MessageResponse { Message = $"File share '{shortId}' not found" });
 
         return Ok(FileShareResponse.FromEntity(fileShare));
     }
@@ -139,41 +128,20 @@ public class AdminFileShareController : BaseApiController
         var fileShare = await _db.FileShares
             .FirstOrDefaultAsync(f => f.ShortId == shortId);
 
-        if (fileShare == null)
-        {
-            return NotFound(new MessageResponse { Message = $"File share '{shortId}' not found" });
-        }
+        if (fileShare == null) return NotFound(new MessageResponse { Message = $"File share '{shortId}' not found" });
 
         // 更新字段
-        if (request.Key != null)
-        {
-            fileShare.Key = request.Key;
-        }
-        
-        if (request.Bucket != null)
-        {
-            fileShare.Bucket = request.Bucket;
-        }
-        
-        if (request.IsEnabled.HasValue)
-        {
-            fileShare.IsEnabled = request.IsEnabled.Value;
-        }
+        if (request.Key != null) fileShare.Key = request.Key;
 
-        if (request.IsPublic.HasValue)
-        {
-            fileShare.IsPublic = request.IsPublic.Value;
-        }
+        if (request.Bucket != null) fileShare.Bucket = request.Bucket;
 
-        if (request.ExpiresAt.HasValue)
-        {
-            fileShare.ExpiresAt = request.ExpiresAt.Value;
-        }
+        if (request.IsEnabled.HasValue) fileShare.IsEnabled = request.IsEnabled.Value;
 
-        if (request.FileName != null)
-        {
-            fileShare.FileName = request.FileName;
-        }
+        if (request.IsPublic.HasValue) fileShare.IsPublic = request.IsPublic.Value;
+
+        if (request.ExpiresAt.HasValue) fileShare.ExpiresAt = request.ExpiresAt.Value;
+
+        if (request.FileName != null) fileShare.FileName = request.FileName;
 
         await _db.SaveChangesAsync();
 
@@ -192,10 +160,7 @@ public class AdminFileShareController : BaseApiController
         var fileShare = await _db.FileShares
             .FirstOrDefaultAsync(f => f.ShortId == shortId);
 
-        if (fileShare == null)
-        {
-            return NotFound(new MessageResponse { Message = $"File share '{shortId}' not found" });
-        }
+        if (fileShare == null) return NotFound(new MessageResponse { Message = $"File share '{shortId}' not found" });
 
         _db.FileShares.Remove(fileShare);
         await _db.SaveChangesAsync();
@@ -221,10 +186,7 @@ public class AdminFileShareController : BaseApiController
             rng.GetBytes(data);
         }
 
-        for (var i = 0; i < 16; i++)
-        {
-            random[i] = chars[data[i] % chars.Length];
-        }
+        for (var i = 0; i < 16; i++) random[i] = chars[data[i] % chars.Length];
 
         return new string(random);
     }

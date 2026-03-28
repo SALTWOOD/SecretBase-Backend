@@ -96,7 +96,7 @@ public class WebAuthnService
     {
         var credential = await _db.UserCredentials
             .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
-        
+
         if (credential == null)
             return false;
 
@@ -109,7 +109,7 @@ public class WebAuthnService
     {
         var credential = await _db.UserCredentials
             .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
-        
+
         if (credential == null)
             return false;
 

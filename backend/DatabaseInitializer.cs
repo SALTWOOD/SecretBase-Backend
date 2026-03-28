@@ -32,7 +32,7 @@ public class DatabaseInitializer
 
             // Background Settings
             { SettingRegistry.Site.Home.Background.Url, null },
-            { SettingRegistry.Site.Home.Background.Blur, 0 },      // 默认不虚化
+            { SettingRegistry.Site.Home.Background.Blur, 0 }, // 默认不虚化
             { SettingRegistry.Site.Home.Background.Opacity, 1.0 }, // 默认不透明
 
             // Banner Settings
@@ -41,26 +41,23 @@ public class DatabaseInitializer
         };
 
         foreach (var (key, value) in defaultSettings)
-        {
             if (!await key.ExistsAsync())
-            {
                 await key.SetValueAsync(value);
-            }
-        }
 
         if (!await db.Users.AnyAsync())
         {
-            string password = Utils.GenerateRandomSecret();
-            User admin = new User
+            var password = Utils.GenerateRandomSecret();
+            var admin = new User
             {
                 Username = "admin",
                 Email = "admin@example.com",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
-                Role = UserRole.Owner,
+                Role = UserRole.Owner
             };
             await db.Users.AddAsync(admin);
             await db.SaveChangesAsync();
-            Console.WriteLine($"[DatabaseInitializer] Created default admin user. Username: 'admin', Password: '{password}'");
+            Console.WriteLine(
+                $"[DatabaseInitializer] Created default admin user. Username: 'admin', Password: '{password}'");
         }
     }
 }

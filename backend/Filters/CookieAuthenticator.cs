@@ -1,7 +1,7 @@
 ﻿namespace backend.Filters;
 
-using backend.Database;
-using backend.Services;
+using Database;
+using Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -43,7 +43,7 @@ public class CookieAuthenticator : AuthenticationHandler<AuthenticationSchemeOpt
             return AuthenticateResult.Fail("Invalid session data");
         }
 
-        bool isBanned = await _db.Users
+        var isBanned = await _db.Users
             .Where(u => u.Id == userId)
             .Select(u => u.IsBanned)
             .FirstOrDefaultAsync();

@@ -9,7 +9,8 @@ public static class ExtensionMethods
     public static T ThrowIfNull<T>(
         this T? value,
         string message = "Value cannot be null",
-        [CallerArgumentExpression(nameof(value))] string? paramName = null) where T : class
+        [CallerArgumentExpression(nameof(value))]
+        string? paramName = null) where T : class
     {
         if (value is null)
             throw new ArgumentNullException(paramName, message);
@@ -19,7 +20,8 @@ public static class ExtensionMethods
     public static T ThrowIfNull<T>(
         this T? value,
         string message = "Value cannot be null",
-        [CallerArgumentExpression(nameof(value))] string? paramName = null) where T : struct
+        [CallerArgumentExpression(nameof(value))]
+        string? paramName = null) where T : struct
     {
         if (!value.HasValue)
             throw new ArgumentNullException(paramName, message);

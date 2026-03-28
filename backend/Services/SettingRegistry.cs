@@ -5,7 +5,8 @@ namespace backend.Services;
 [GenerateSettingsTree]
 public static partial class SettingRegistry
 {
-    public static readonly string[] Keys = [
+    public static readonly string[] Keys =
+    [
         // --- Site SEO ---
         "site.seo.title:string",
         "site.seo.description:string",
@@ -26,7 +27,7 @@ public static partial class SettingRegistry
 
         // --- Home Background ---
         "site.home.background.url:string",
-        "site.home.background.blur:int",   // 虚化度
+        "site.home.background.blur:int", // 虚化度
         "site.home.background.opacity:int", // 透明度
 
         // --- Home Banner ---

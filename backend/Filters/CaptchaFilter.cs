@@ -24,7 +24,8 @@ public class CaptchaFilter : IAsyncActionFilter
         }
 
         var hasAttribute = context.ActionDescriptor.EndpointMetadata.Any(em => em is ValidateCaptchaAttribute)
-                        || context.Controller.GetType().GetCustomAttributes(typeof(ValidateCaptchaAttribute), true).Any();
+                           || context.Controller.GetType().GetCustomAttributes(typeof(ValidateCaptchaAttribute), true)
+                               .Any();
 
         if (hasAttribute)
         {
@@ -34,14 +35,16 @@ public class CaptchaFilter : IAsyncActionFilter
 
             if (requestModel == null)
             {
-                context.Result = new BadRequestObjectResult(new { message = "Bad request: missing \"captcha_token\". Have you completed CAPTCHA?" });
+                context.Result = new BadRequestObjectResult(new
+                    { message = "Bad request: missing \"captcha_token\". Have you completed CAPTCHA?" });
                 return;
             }
 
             var isValid = await _capService.ValidateAsync(requestModel);
             if (!isValid)
             {
-                context.Result = new BadRequestObjectResult(new { message = "CAPTCHA validation failed. Please try again." });
+                context.Result =
+                    new BadRequestObjectResult(new { message = "CAPTCHA validation failed. Please try again." });
                 return;
             }
         }

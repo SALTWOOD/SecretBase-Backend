@@ -18,14 +18,16 @@ public class BaseApiController(BaseServices deps) : ControllerBase
     protected readonly IDatabase _redis = deps.Redis.GetDatabase();
     protected readonly SessionService _session = deps.Session;
 
-    protected int? CurrentUserId => int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out int result) ? result : null;
+    protected int? CurrentUserId =>
+        int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var result) ? result : null;
 
     protected Task<User?> CurrentUser => _db.Users.FirstOrDefaultAsync(it => it.Id == CurrentUserId);
 
-    protected async ValueTask<int> RefreshTokenAsync(User user, TokenPermissionLevel permissionLevel = TokenPermissionLevel.Full)
+    protected async ValueTask<int> RefreshTokenAsync(User user,
+        TokenPermissionLevel permissionLevel = TokenPermissionLevel.Full)
     {
         var access = permissionLevel == TokenPermissionLevel.Full ? [Permissions.All] : TokenPermissions.None;
-        (string token, int hours) = await _session.CreateSessionAsync(user, access, permissionLevel: permissionLevel);
+        var (token, hours) = await _session.CreateSessionAsync(user, access, permissionLevel: permissionLevel);
 
         Response.Cookies.Append(Constants.AUTH_TOKEN_COOKIE_NAME, token, new CookieOptions
         {

@@ -17,27 +17,27 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
         builder.Property(x => x.AuthorId).IsRequired();
 
         builder.Property(x => x.CreatedAt)
-               .HasColumnType("timestamptz")
-               .HasDefaultValueSql("CURRENT_TIMESTAMP");
+            .HasColumnType("timestamptz")
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
         builder.Property(x => x.UpdatedAt)
-               .HasColumnType("timestamptz")
-               .HasDefaultValueSql("CURRENT_TIMESTAMP");
+            .HasColumnType("timestamptz")
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
         builder.HasOne(x => x.Article)
-               .WithMany(x => x.Comments)
-               .HasForeignKey(x => x.ArticleId)
-               .OnDelete(DeleteBehavior.Cascade);
+            .WithMany(x => x.Comments)
+            .HasForeignKey(x => x.ArticleId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(x => x.Author)
-               .WithMany()
-               .HasForeignKey(x => x.AuthorId)
-               .OnDelete(DeleteBehavior.Cascade);
+            .WithMany()
+            .HasForeignKey(x => x.AuthorId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(x => x.ParentComment)
-               .WithMany(x => x.Replies)
-               .HasForeignKey(x => x.ParentCommentId)
-               .OnDelete(DeleteBehavior.Restrict);
+            .WithMany(x => x.Replies)
+            .HasForeignKey(x => x.ParentCommentId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(x => x.ArticleId);
         builder.HasIndex(x => x.AuthorId);

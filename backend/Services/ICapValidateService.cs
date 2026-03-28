@@ -20,7 +20,10 @@ public class CapValidateService : ICapValidateService
         _httpClientFactory = httpClientFactory;
     }
 
-    public Task<bool> ValidateAsync(ICaptchaRequest request) => ValidateAsync(request.CaptchaToken);
+    public Task<bool> ValidateAsync(ICaptchaRequest request)
+    {
+        return ValidateAsync(request.CaptchaToken);
+    }
 
     public async Task<bool> ValidateAsync(string? token)
     {
@@ -28,9 +31,7 @@ public class CapValidateService : ICapValidateService
         var secret = _config.GetConnectionString("CapServerSecret");
 
         if (string.IsNullOrEmpty(remoteUrl) || string.IsNullOrEmpty(secret))
-        {
             throw new InvalidOperationException("Incomplete CapServer Configuration");
-        }
 
         var requestData = new
         {
@@ -59,6 +60,5 @@ public class CapValidateService : ICapValidateService
 
 public class CapRemoteResponse
 {
-    [JsonPropertyName("success")]
-    public bool Success { get; set; }
+    [JsonPropertyName("success")] public bool Success { get; set; }
 }

@@ -14,14 +14,14 @@ public class ArticleController(BaseServices deps) : BaseApiController(deps)
 {
     [HttpGet]
     [ProducesResponseType(typeof(List<ArticleResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetArticles([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] bool? published = null)
+    public async Task<IActionResult> GetArticles([FromQuery] int page = 1, [FromQuery] int pageSize = 20,
+        [FromQuery] bool? published = null)
     {
         var query = _db.Articles.AsQueryable();
 
         if (published.HasValue)
-        {
-            query = query.Where(a => a.IsPublished == published.Value || (CurrentUserId.HasValue && a.AuthorId == CurrentUserId));
-        }
+            query = query.Where(a =>
+                a.IsPublished == published.Value || (CurrentUserId.HasValue && a.AuthorId == CurrentUserId));
 
         var articles = await query
             .OrderByDescending(a => a.CreatedAt)
@@ -64,10 +64,7 @@ public class ArticleController(BaseServices deps) : BaseApiController(deps)
             })
             .FirstOrDefaultAsync();
 
-        if (article == null)
-        {
-            return NotFound(new MessageResponse("Article not found."));
-        }
+        if (article == null) return NotFound(new MessageResponse("Article not found."));
 
         return Ok(article);
     }
@@ -78,10 +75,7 @@ public class ArticleController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateArticle([FromBody] ArticleCreateModel model)
     {
-        if (CurrentUserId == null)
-        {
-            return BadRequest(new MessageResponse("User not authenticated."));
-        }
+        if (CurrentUserId == null) return BadRequest(new MessageResponse("User not authenticated."));
 
         var article = new Article
         {
@@ -121,20 +115,11 @@ public class ArticleController(BaseServices deps) : BaseApiController(deps)
     public async Task<IActionResult> UpdateArticle(int id, [FromBody] ArticleUpdateModel model)
     {
         var article = await _db.Articles.FindAsync(id);
-        if (article == null)
-        {
-            return NotFound(new MessageResponse("Article not found."));
-        }
+        if (article == null) return NotFound(new MessageResponse("Article not found."));
 
-        if (CurrentUserId == null)
-        {
-            return BadRequest(new MessageResponse("User not authenticated."));
-        }
+        if (CurrentUserId == null) return BadRequest(new MessageResponse("User not authenticated."));
 
-        if (article.AuthorId != CurrentUserId.Value)
-        {
-            return Forbid();
-        }
+        if (article.AuthorId != CurrentUserId.Value) return Forbid();
 
         article.Title = model.Title;
         article.Content = model.Content;
@@ -167,20 +152,11 @@ public class ArticleController(BaseServices deps) : BaseApiController(deps)
     public async Task<IActionResult> DeleteArticle(int id)
     {
         var article = await _db.Articles.FindAsync(id);
-        if (article == null)
-        {
-            return NotFound(new MessageResponse("Article not found."));
-        }
+        if (article == null) return NotFound(new MessageResponse("Article not found."));
 
-        if (CurrentUserId == null)
-        {
-            return BadRequest(new MessageResponse("User not authenticated."));
-        }
+        if (CurrentUserId == null) return BadRequest(new MessageResponse("User not authenticated."));
 
-        if (article.AuthorId != CurrentUserId.Value)
-        {
-            return Forbid();
-        }
+        if (article.AuthorId != CurrentUserId.Value) return Forbid();
 
         _db.Articles.Remove(article);
         await _db.SaveChangesAsync();

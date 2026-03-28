@@ -15,7 +15,9 @@ using static backend.Services.SessionService;
 namespace backend.Controllers.Auth.TwoFactor;
 
 public readonly record struct TotpVerifyRequest(string Code);
+
 public readonly record struct TotpRecoveryCodeRequest(string Code);
+
 public readonly record struct TotpSetupResponse(string Secret, string Url);
 
 [ApiController]
@@ -43,7 +45,7 @@ public class TotpController : BaseApiController
         var secretBytes = KeyGeneration.GenerateRandomKey(20);
         var secretBase32 = Base32Encoding.ToString(secretBytes);
 
-        string account = user.Username;
+        var account = user.Username;
         var label = $"{Uri.EscapeDataString(ISSUER)}:{Uri.EscapeDataString(account)}";
 
         var baseUri = $"otpauth://totp/{label}";
@@ -89,6 +91,7 @@ public class TotpController : BaseApiController
 
             return Ok(new MessageResponse { Message = "Successfully set up TOTP" });
         }
+
         return BadRequest(new MessageResponse { Message = "Invalid code" });
     }
 
@@ -100,7 +103,8 @@ public class TotpController : BaseApiController
     {
         var user = await CurrentUser;
         if (user == null) return Unauthorized();
-        if (user.TotpSecret == null) return BadRequest(new MessageResponse { Message = "TOTP has not been set up yet" });
+        if (user.TotpSecret == null)
+            return BadRequest(new MessageResponse { Message = "TOTP has not been set up yet" });
         user.TotpSecret = null;
         await _db.SaveChangesAsync();
         return NoContent();
@@ -114,35 +118,30 @@ public class TotpController : BaseApiController
     {
         var user = await CurrentUser;
         if (user == null) return Unauthorized();
-        string? savedSecret = user.TotpSecret;
+        var savedSecret = user.TotpSecret;
 
-        if (string.IsNullOrEmpty(savedSecret)) return BadRequest(new MessageResponse { Message = "TOTP has not been set up" });
+        if (string.IsNullOrEmpty(savedSecret))
+            return BadRequest(new MessageResponse { Message = "TOTP has not been set up" });
 
         var secretBytes = Base32Encoding.ToBytes(savedSecret);
         var totp = new Totp(secretBytes);
-        bool isValid = totp.VerifyTotp(request.Code, out _, VerificationWindow.RfcSpecifiedNetworkDelay);
+        var isValid = totp.VerifyTotp(request.Code, out _, VerificationWindow.RfcSpecifiedNetworkDelay);
 
         if (!isValid) return BadRequest(new MessageResponse { Message = "Invalid verification code" });
 
         var authToken = Request.Cookies[Constants.AUTH_TOKEN_COOKIE_NAME];
         if (string.IsNullOrEmpty(authToken))
-        {
             return BadRequest(new MessageResponse { Message = "Authentication token not found" });
-        }
 
         // Get token permission level
         var permissionLevel = await _session.GetTokenPermissionLevelAsync(authToken);
 
         // If it's a no permission token, upgrade to full permission token
         if (permissionLevel == TokenPermissionLevel.None)
-        {
             await _session.UpgradeTokenAsync(authToken);
-        }
         // If it's already a full permission token, set 2FA grace period
         else if (permissionLevel == TokenPermissionLevel.Full)
-        {
             await _twoFactor.GrantGracePeriodAsync(user.Id, authToken);
-        }
 
         return Ok(new { message = "TOTP verified" });
     }

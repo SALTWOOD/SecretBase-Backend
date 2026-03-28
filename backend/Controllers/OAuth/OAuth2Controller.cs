@@ -1,9 +1,9 @@
 namespace backend.Controllers.OAuth;
 
-using backend.Database;
-using backend.Database.Entities;
-using backend.Services;
-using backend.Types.Requests;
+using Database;
+using Database.Entities;
+using Services;
+using Types.Requests;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -59,48 +59,36 @@ public class OAuth2Controller : ControllerBase
     {
         // 1. 验证 response_type
         if (request.ResponseType != "code")
-        {
             return BadRequest(new OAuth2ErrorResponse
             {
                 Error = "unsupported_response_type",
                 ErrorDescription = "Only 'code' response type is supported"
             });
-        }
 
         // 2. 验证 client_id
         var application = await _applicationManager.FindByClientIdAsync(request.ClientId);
         if (application == null)
-        {
             return BadRequest(new OAuth2ErrorResponse
             {
                 Error = "invalid_client",
                 ErrorDescription = "Client not found"
             });
-        }
 
         // 3. 验证 redirect_uri 在白名单中
         var redirectUris = await _applicationManager.GetRedirectUrisAsync(application);
         if (!redirectUris.Any(u => u.ToString().Equals(request.RedirectUri, StringComparison.OrdinalIgnoreCase)))
-        {
             return BadRequest(new OAuth2ErrorResponse
             {
                 Error = "invalid_request",
                 ErrorDescription = "Invalid redirect_uri"
             });
-        }
 
         // 4. 获取当前用户信息
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-        {
-            return Unauthorized();
-        }
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId)) return Unauthorized();
 
         var user = await _db.Users.FindAsync(userId);
-        if (user == null)
-        {
-            return Unauthorized();
-        }
+        if (user == null) return Unauthorized();
 
         // 5. 验证并格式化 scope
         var requestedScopes = string.IsNullOrEmpty(request.Scope)
@@ -128,12 +116,10 @@ public class OAuth2Controller : ControllerBase
 
         string? creatorUsername = null;
         if (creatorId != null && int.TryParse(creatorId, out var creatorIntId))
-        {
             creatorUsername = await _db.Users
                 .Where(u => u.Id == creatorIntId)
                 .Select(u => u.Username)
                 .FirstOrDefaultAsync();
-        }
 
         // 7. 返回授权页面数据
         var response = new OAuth2AuthorizeResponse
@@ -164,40 +150,30 @@ public class OAuth2Controller : ControllerBase
     {
         // 获取当前用户
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-        {
-            return Unauthorized();
-        }
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId)) return Unauthorized();
 
         var user = await _db.Users.FindAsync(userId);
-        if (user == null || user.IsBanned)
-        {
-            return Unauthorized();
-        }
+        if (user == null || user.IsBanned) return Unauthorized();
 
         // 验证 client_id
         var application = await _applicationManager.FindByClientIdAsync(request.ClientId);
         if (application == null)
-        {
             return Ok(new OAuth2ApproveResultResponse
             {
                 Success = false,
                 Error = "invalid_client",
                 ErrorDescription = "Client not found"
             });
-        }
 
         // 验证 redirect_uri
         var redirectUris = await _applicationManager.GetRedirectUrisAsync(application);
         if (!redirectUris.Any(u => u.ToString().Equals(request.RedirectUri, StringComparison.OrdinalIgnoreCase)))
-        {
             return Ok(new OAuth2ApproveResultResponse
             {
                 Success = false,
                 Error = "invalid_request",
                 ErrorDescription = "Invalid redirect_uri"
             });
-        }
 
         // 构建重定向 URL
         var redirectUrl = request.RedirectUri;
@@ -205,13 +181,11 @@ public class OAuth2Controller : ControllerBase
         // 用户拒绝授权
         if (!request.Approved)
         {
-            _logger.LogInformation("User {UserId} denied authorization for client {ClientId}", userId, request.ClientId);
-            var deniedUrl = redirectUrl + (redirectUrl.Contains('?') ? "&" : "?") + 
-                "error=access_denied&error_description=User denied access";
-            if (!string.IsNullOrEmpty(request.State))
-            {
-                deniedUrl += "&state=" + Uri.EscapeDataString(request.State);
-            }
+            _logger.LogInformation("User {UserId} denied authorization for client {ClientId}", userId,
+                request.ClientId);
+            var deniedUrl = redirectUrl + (redirectUrl.Contains('?') ? "&" : "?") +
+                            "error=access_denied&error_description=User denied access";
+            if (!string.IsNullOrEmpty(request.State)) deniedUrl += "&state=" + Uri.EscapeDataString(request.State);
             return Ok(new OAuth2ApproveResultResponse
             {
                 Success = true,
@@ -227,10 +201,10 @@ public class OAuth2Controller : ControllerBase
         // 创建 ClaimsPrincipal
         var claims = new List<Claim>
         {
-            new Claim(OpenIddictConstants.Claims.Subject, userId.ToString()),
-            new Claim(OpenIddictConstants.Claims.Email, user.Email ?? ""),
-            new Claim(OpenIddictConstants.Claims.Name, user.Username ?? ""),
-            new Claim(OAuthScopes.Roles, user.Role.ToString())
+            new(OpenIddictConstants.Claims.Subject, userId.ToString()),
+            new(OpenIddictConstants.Claims.Email, user.Email ?? ""),
+            new(OpenIddictConstants.Claims.Name, user.Username ?? ""),
+            new(OAuthScopes.Roles, user.Role.ToString())
         };
 
         var identity = new ClaimsIdentity(claims, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
@@ -240,10 +214,7 @@ public class OAuth2Controller : ControllerBase
         principal.SetScopes(scopes);
 
         // 为每个 claim 设置目标
-        foreach (var claim in principal.Claims)
-        {
-            claim.SetDestinations(GetDestinations(claim, principal));
-        }
+        foreach (var claim in principal.Claims) claim.SetDestinations(GetDestinations(claim, principal));
 
         // 创建授权
         var appId = await _applicationManager.GetIdAsync(application);
@@ -254,7 +225,7 @@ public class OAuth2Controller : ControllerBase
         // 生成授权码
         var result = SignIn(principal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
 
-        _logger.LogInformation("User {UserId} authorized client {ClientId} with scopes {Scopes}", 
+        _logger.LogInformation("User {UserId} authorized client {ClientId} with scopes {Scopes}",
             userId, request.ClientId, string.Join(", ", scopes));
 
         // 返回成功，前端需要从响应中获取 code
@@ -282,23 +253,19 @@ public class OAuth2Controller : ControllerBase
         // 验证客户端
         var application = await _applicationManager.FindByClientIdAsync(request.ClientId);
         if (application == null)
-        {
             return Unauthorized(new OAuth2ErrorResponse
             {
                 Error = "invalid_client",
                 ErrorDescription = "Client not found"
             });
-        }
 
         // 验证客户端密钥
         if (!await _applicationManager.ValidateClientSecretAsync(application, request.ClientSecret))
-        {
             return Unauthorized(new OAuth2ErrorResponse
             {
                 Error = "invalid_client",
                 ErrorDescription = "Invalid client secret"
             });
-        }
 
         // 根据 grant_type 处理
         return request.GrantType switch
@@ -326,23 +293,19 @@ public class OAuth2Controller : ControllerBase
         // 验证客户端
         var application = await _applicationManager.FindByClientIdAsync(request.ClientId);
         if (application == null)
-        {
             return Unauthorized(new OAuth2ErrorResponse
             {
                 Error = "invalid_client",
                 ErrorDescription = "Client not found"
             });
-        }
 
         // 验证客户端密钥
         if (!await _applicationManager.ValidateClientSecretAsync(application, request.ClientSecret))
-        {
             return Unauthorized(new OAuth2ErrorResponse
             {
                 Error = "invalid_client",
                 ErrorDescription = "Invalid client secret"
             });
-        }
 
         // 撤销令牌（即使令牌无效也返回成功）
         _logger.LogInformation("Token revocation requested by client {ClientId}", request.ClientId);
@@ -357,23 +320,19 @@ public class OAuth2Controller : ControllerBase
         yield return OpenIddictConstants.Destinations.AccessToken;
 
         if (claim.Type is OpenIddictConstants.Claims.Name or OpenIddictConstants.Claims.Email)
-        {
             yield return OpenIddictConstants.Destinations.IdentityToken;
-        }
     }
 
     private async Task<object> CreateAuthorizationAsync(int userId, string applicationId, string[] scopes)
     {
         // 查找现有授权
         await foreach (var auth in _authorizationManager.FindAsync(
-            subject: userId.ToString(),
-            client: applicationId,
-            status: OpenIddictConstants.Statuses.Valid,
-            type: OpenIddictConstants.AuthorizationTypes.Permanent,
-            scopes: scopes.ToImmutableArray()))
-        {
+                           userId.ToString(),
+                           applicationId,
+                           OpenIddictConstants.Statuses.Valid,
+                           OpenIddictConstants.AuthorizationTypes.Permanent,
+                           scopes.ToImmutableArray()))
             return auth;
-        }
 
         // 创建新授权
         var user = await _db.Users.FindAsync(userId);
@@ -394,65 +353,53 @@ public class OAuth2Controller : ControllerBase
     {
         // 验证必填参数
         if (string.IsNullOrEmpty(request.Code) || string.IsNullOrEmpty(request.RedirectUri))
-        {
             return BadRequest(new OAuth2ErrorResponse
             {
                 Error = "invalid_request",
                 ErrorDescription = "code and redirect_uri are required for authorization_code grant"
             });
-        }
 
         // 使用 OpenIddict 验证授权码
         var authResult = await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
-        
+
         if (authResult?.Principal == null)
-        {
             return BadRequest(new OAuth2ErrorResponse
             {
                 Error = "invalid_grant",
                 ErrorDescription = "Invalid or expired authorization code"
             });
-        }
 
         // 验证客户端 ID 匹配
         var clientId = authResult.Principal.FindFirst(OpenIddictConstants.Claims.ClientId)?.Value;
         if (clientId != request.ClientId)
-        {
             return BadRequest(new OAuth2ErrorResponse
             {
                 Error = "invalid_grant",
                 ErrorDescription = "Client ID mismatch"
             });
-        }
 
         // 获取用户信息
         var subject = authResult.Principal.FindFirst(OpenIddictConstants.Claims.Subject)?.Value;
         if (string.IsNullOrEmpty(subject) || !int.TryParse(subject, out var userId))
-        {
             return BadRequest(new OAuth2ErrorResponse
             {
                 Error = "invalid_grant",
                 ErrorDescription = "Invalid authorization"
             });
-        }
 
         var user = await _db.Users.FindAsync(userId);
         if (user == null || user.IsBanned)
-        {
             return BadRequest(new OAuth2ErrorResponse
             {
                 Error = "invalid_grant",
                 ErrorDescription = "User not found or banned"
             });
-        }
 
         // 设置 claim 目标
         foreach (var claim in authResult.Principal.Claims)
-        {
             claim.SetDestinations(GetDestinations(claim, authResult.Principal));
-        }
 
-        _logger.LogInformation("Access token issued for user {UserId} to client {ClientId}", 
+        _logger.LogInformation("Access token issued for user {UserId} to client {ClientId}",
             userId, request.ClientId);
 
         // 返回令牌
@@ -462,54 +409,44 @@ public class OAuth2Controller : ControllerBase
     private async Task<IActionResult> HandleRefreshTokenGrant(OAuth2TokenRequest request, object application)
     {
         if (string.IsNullOrEmpty(request.RefreshToken))
-        {
             return BadRequest(new OAuth2ErrorResponse
             {
                 Error = "invalid_request",
                 ErrorDescription = "refresh_token is required for refresh_token grant"
             });
-        }
 
         // 使用 OpenIddict 验证刷新令牌
         var authResult = await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
-        
+
         if (authResult?.Principal == null)
-        {
             return BadRequest(new OAuth2ErrorResponse
             {
                 Error = "invalid_grant",
                 ErrorDescription = "Invalid or expired refresh token"
             });
-        }
 
         // 获取用户信息
         var subject = authResult.Principal.FindFirst(OpenIddictConstants.Claims.Subject)?.Value;
         if (string.IsNullOrEmpty(subject) || !int.TryParse(subject, out var userId))
-        {
             return BadRequest(new OAuth2ErrorResponse
             {
                 Error = "invalid_grant",
                 ErrorDescription = "Invalid refresh token"
             });
-        }
 
         var user = await _db.Users.FindAsync(userId);
         if (user == null || user.IsBanned)
-        {
             return BadRequest(new OAuth2ErrorResponse
             {
                 Error = "invalid_grant",
                 ErrorDescription = "User not found or banned"
             });
-        }
 
         // 设置 claim 目标
         foreach (var claim in authResult.Principal.Claims)
-        {
             claim.SetDestinations(GetDestinations(claim, authResult.Principal));
-        }
 
-        _logger.LogInformation("Token refreshed for user {UserId} to client {ClientId}", 
+        _logger.LogInformation("Token refreshed for user {UserId} to client {ClientId}",
             userId, request.ClientId);
 
         // 返回新令牌

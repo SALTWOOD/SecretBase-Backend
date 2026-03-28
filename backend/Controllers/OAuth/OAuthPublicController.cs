@@ -1,7 +1,7 @@
 ﻿namespace backend.Controllers.OAuth;
 
 using backend;
-using backend.Types.Response;
+using Types.Response;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Abstractions;
@@ -13,7 +13,8 @@ public class OAuthPublicController : ControllerBase
     private readonly IOpenIddictApplicationManager _applicationManager;
     private readonly ILogger<OAuthPublicController> _logger;
 
-    public OAuthPublicController(IOpenIddictApplicationManager applicationManager, ILogger<OAuthPublicController> logger)
+    public OAuthPublicController(IOpenIddictApplicationManager applicationManager,
+        ILogger<OAuthPublicController> logger)
     {
         _applicationManager = applicationManager;
         _logger = logger;

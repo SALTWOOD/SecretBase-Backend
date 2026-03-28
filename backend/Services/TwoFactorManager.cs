@@ -16,7 +16,7 @@ public class TwoFactorManager
 
     private string GetSessionSuffix(string authToken)
     {
-        byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(authToken));
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(authToken));
         return Convert.ToHexString(hash);
     }
 

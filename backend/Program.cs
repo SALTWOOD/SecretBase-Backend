@@ -21,10 +21,8 @@ using backend.SourceGenerators;
 var builder = WebApplication.CreateBuilder(args);
 
 #region Framework Services
-builder.Services.AddControllers(options =>
-{
-    options.Filters.Add<CaptchaFilter>();
-});
+
+builder.Services.AddControllers(options => { options.Filters.Add<CaptchaFilter>(); });
 builder.Services.AddOpenApi();
 builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
@@ -36,17 +34,17 @@ builder.Services.AddCors(options =>
     {
         var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
         if (allowedOrigins != null && allowedOrigins.Length > 0)
-        {
             policy.WithOrigins(allowedOrigins)
-                  .AllowAnyMethod()
-                  .AllowAnyHeader()
-                  .AllowCredentials();
-        }
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .AllowCredentials();
     });
 });
+
 #endregion
 
 #region Database (EF Core with PostgreSQL)
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -61,22 +59,26 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 #endregion
 
 #region Redis (Dragonfly)
+
 var redisConnection = builder.Configuration.GetConnectionString("RedisConnection")
-    ?? throw new InvalidOperationException("Redis connection string is missing.");
+                      ?? throw new InvalidOperationException("Redis connection string is missing.");
 
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConnection));
+
 #endregion
 
 #region AWS S3 Storage
+
 builder.Services.AddSingleton<IAmazonS3>(sp =>
 {
     var configuration = sp.GetRequiredService<IConfiguration>();
     var s3Section = configuration.GetSection("S3");
-    
+
     var accessKeyId = s3Section["AccessKeyId"] ?? throw new InvalidOperationException("S3:AccessKeyId is missing.");
-    var secretAccessKey = s3Section["SecretAccessKey"] ?? throw new InvalidOperationException("S3:SecretAccessKey is missing.");
+    var secretAccessKey = s3Section["SecretAccessKey"] ??
+                          throw new InvalidOperationException("S3:SecretAccessKey is missing.");
     var region = s3Section["Region"] ?? throw new InvalidOperationException("S3:Region is missing.");
-    
+
     var credentials = new BasicAWSCredentials(accessKeyId, secretAccessKey);
     var config = new AmazonS3Config
     {
@@ -85,12 +87,14 @@ builder.Services.AddSingleton<IAmazonS3>(sp =>
         UseHttp = !bool.TryParse(s3Section["UseHttps"], out var useHttps) || !useHttps,
         ForcePathStyle = bool.TryParse(s3Section["ForcePathStyle"], out var forcePathStyle) && forcePathStyle
     };
-    
+
     return new AmazonS3Client(credentials, config);
 });
+
 #endregion
 
 #region Business Services
+
 builder.Services.AddSingleton<TwoFactorManager>();
 builder.Services.AddScoped<ICapValidateService, CapValidateService>();
 builder.Services.AddScoped<SessionService>();
@@ -106,9 +110,11 @@ builder.Services.AddFido2(options =>
     options.Origins = new HashSet<string> { builder.Configuration["WebAuthn:Origin"]! };
     options.TimestampDriftTolerance = 300000;
 });
+
 #endregion
 
 #region Auth & Rate Limiter
+
 builder.Services.AddSingleton<IAuthorizationHandler, MinimumRoleHandler>();
 
 // 配置双认证方案：Cookie Session + OAuth Bearer
@@ -119,7 +125,7 @@ builder.Services.AddAuthentication("SimpleSession")
 builder.Services.AddAuthorization(options =>
 {
     // 默认策略：支持任一认证方式
-    options.DefaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+    options.DefaultPolicy = new AuthorizationPolicyBuilder()
         .AddAuthenticationSchemes("SimpleSession", OAuthBearerAuthenticator.SchemeName)
         .RequireAuthenticatedUser()
         .Build();
@@ -127,17 +133,17 @@ builder.Services.AddAuthorization(options =>
     // CookieOnly 策略：仅限 Cookie Session 认证（用于敏感操作）
     options.AddPolicy("CookieOnly", policy =>
         policy.AddAuthenticationSchemes("SimpleSession")
-              .RequireAuthenticatedUser());
+            .RequireAuthenticatedUser());
 
     // OAuthOnly 策略：仅限 OAuth Bearer 认证
     options.AddPolicy("OAuthOnly", policy =>
         policy.AddAuthenticationSchemes(OAuthBearerAuthenticator.SchemeName)
-              .RequireAuthenticatedUser());
+            .RequireAuthenticatedUser());
 
     // AdminOnly 策略：需要 Admin 角色（仅 Cookie Session）
     options.AddPolicy("AdminOnly", policy =>
         policy.AddAuthenticationSchemes("SimpleSession")
-              .AddRequirements(new MinimumRoleRequirement(UserRole.Admin)));
+            .AddRequirements(new MinimumRoleRequirement(UserRole.Admin)));
 });
 
 builder.Services.AddRateLimiter(options =>
@@ -170,21 +176,23 @@ builder.Services.AddRateLimiter(options =>
         });
     });
 });
+
 #endregion
 
 #region OAuth (OpenIddict with EF Core)
+
 builder.Services.AddOpenIddict()
     .AddCore(options =>
     {
         options.UseEntityFrameworkCore()
-               .UseDbContext<AppDbContext>();
+            .UseDbContext<AppDbContext>();
     })
     .AddServer(options =>
     {
         options.SetAuthorizationEndpointUris("/connect/authorize")
-               .SetTokenEndpointUris("/connect/token")
-               .SetIntrospectionEndpointUris("/connect/introspect")
-               .SetRevocationEndpointUris("/connect/revoke");
+            .SetTokenEndpointUris("/connect/token")
+            .SetIntrospectionEndpointUris("/connect/introspect")
+            .SetRevocationEndpointUris("/connect/revoke");
 
         // Enable authorization code flow with PKCE support
         options.AllowAuthorizationCodeFlow();
@@ -195,8 +203,8 @@ builder.Services.AddOpenIddict()
 
         // Configure token lifetimes
         options.SetAuthorizationCodeLifetime(TimeSpan.FromMinutes(5))
-               .SetAccessTokenLifetime(TimeSpan.FromMinutes(60))
-               .SetRefreshTokenLifetime(TimeSpan.FromDays(30));
+            .SetAccessTokenLifetime(TimeSpan.FromMinutes(60))
+            .SetRefreshTokenLifetime(TimeSpan.FromDays(30));
 
         // Register standard scopes
         options.RegisterScopes(
@@ -219,21 +227,23 @@ builder.Services.AddOpenIddict()
 
         // Add development certificates (use production certificates in production!)
         options.AddDevelopmentEncryptionCertificate()
-               .AddDevelopmentSigningCertificate()
-               .SetIssuer(builder.Configuration["OpenIddict:Issuer"].ThrowIfNull());
+            .AddDevelopmentSigningCertificate()
+            .SetIssuer(builder.Configuration["OpenIddict:Issuer"].ThrowIfNull());
 
         // Configure ASP.NET Core integration
         options.UseAspNetCore()
-               .DisableTransportSecurityRequirement()
-               .EnableTokenEndpointPassthrough()
-               .EnableAuthorizationEndpointPassthrough()
-               .EnableStatusCodePagesIntegration();
+            .DisableTransportSecurityRequirement()
+            .EnableTokenEndpointPassthrough()
+            .EnableAuthorizationEndpointPassthrough()
+            .EnableStatusCodePagesIntegration();
     });
+
 #endregion
 
 var app = builder.Build();
 
 #region Middleware Pipeline
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -245,9 +255,11 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
 #endregion
 
 #region Data Seeding & Migration
+
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -258,6 +270,7 @@ using (var scope = app.Services.CreateScope())
 
 var scopeFactory = app.Services.GetRequiredService<IServiceScopeFactory>();
 SettingNode.GlobalProvider = new EfSettingProvider(scopeFactory);
+
 #endregion
 
 await app.RunAsync();

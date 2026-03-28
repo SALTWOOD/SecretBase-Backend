@@ -10,6 +10,7 @@ using System.Security.Cryptography;
 namespace backend.Controllers.Admin;
 
 public record CreateInvitationRequest(int Uses, int HoursValid);
+
 public record UpdateInvitationRequest(bool? IsDisabled, int? Uses, int? HoursValid);
 
 [Authorize(Policy = "AdminOnly")]
@@ -24,7 +25,7 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
         if (page < 1) page = 1;
         if (size > 100) size = 100;
 
-        int totalCount = 0;
+        var totalCount = 0;
 
         var invites = await _db.Invites
             .Include(i => i.Creator)
@@ -47,15 +48,15 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
     [ProducesResponseType<Invite>(StatusCodes.Status201Created)]
     public async Task<IActionResult> CreateInvitations([FromBody] CreateInvitationRequest request)
     {
-        DateTime createdAt = DateTime.UtcNow;
+        var createdAt = DateTime.UtcNow;
 
-        Invite invite = new Invite
+        var invite = new Invite
         {
             MaxUses = request.Uses,
             Code = Utils.GenerateSecureCode(),
             CreatedAt = createdAt,
             ExpireAt = request.HoursValid > 0 ? createdAt.AddHours(request.HoursValid) : null,
-            CreatorId = CurrentUserId.ThrowIfNull(),
+            CreatorId = CurrentUserId.ThrowIfNull()
         };
 
         await _db.Invites.AddAsync(invite);
@@ -85,9 +86,7 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
         // Get current user information
         var currentUserIdClaim = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier);
         if (currentUserIdClaim == null || !int.TryParse(currentUserIdClaim.Value, out var currentUserId))
-        {
             return Unauthorized(new { message = "Invalid user identity" });
-        }
 
         // Get current user's role
         var currentUser = await _db.Users
@@ -95,10 +94,7 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
             .Select(u => new { u.Role })
             .FirstOrDefaultAsync();
 
-        if (currentUser == null)
-        {
-            return Unauthorized(new { message = "Current user not found" });
-        }
+        if (currentUser == null) return Unauthorized(new { message = "Current user not found" });
 
         var invite = await _db.Invites.FindAsync(id);
         if (invite == null)
@@ -112,9 +108,8 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
 
         // Check permission: can only modify invitations created by users with lower role level
         if (creator != null && creator.Role >= currentUser.Role)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Cannot modify invitations created by users with equal or higher role level" });
-        }
+            return StatusCode(StatusCodes.Status403Forbidden,
+                new { message = "Cannot modify invitations created by users with equal or higher role level" });
 
         var changed = false;
 
@@ -155,9 +150,7 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
         // Get current user information
         var currentUserIdClaim = HttpContext.User.FindFirst(ClaimTypes.NameIdentifier);
         if (currentUserIdClaim == null || !int.TryParse(currentUserIdClaim.Value, out var currentUserId))
-        {
             return Unauthorized(new { message = "Invalid user identity" });
-        }
 
         // Get current user's role
         var currentUser = await _db.Users
@@ -165,10 +158,7 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
             .Select(u => new { u.Role })
             .FirstOrDefaultAsync();
 
-        if (currentUser == null)
-        {
-            return Unauthorized(new { message = "Current user not found" });
-        }
+        if (currentUser == null) return Unauthorized(new { message = "Current user not found" });
 
         var invite = await _db.Invites.FindAsync(id);
         if (invite == null)
@@ -182,9 +172,8 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
 
         // Check permission: can only delete invitations created by users with lower role level
         if (creator != null && creator.Role >= currentUser.Role)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Cannot delete invitations created by users with equal or higher role level" });
-        }
+            return StatusCode(StatusCodes.Status403Forbidden,
+                new { message = "Cannot delete invitations created by users with equal or higher role level" });
 
         _db.Invites.Remove(invite);
         await _db.SaveChangesAsync();
@@ -198,7 +187,7 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
         var exists = await _db.Invites.AnyAsync(it => it.Id == id);
         if (!exists) return NotFound();
 
-        int totalCount = 0;
+        var totalCount = 0;
 
         var users = await _db.Users
             .Where(u => u.UsedInviteId == id)

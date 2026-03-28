@@ -19,20 +19,17 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(x => x.Email).HasMaxLength(255).IsRequired();
 
         builder.Property(x => x.Role)
-               .HasConversion<string>()
-               .HasMaxLength(20);
+            .HasConversion<string>()
+            .HasMaxLength(20);
 
-        builder.OwnsOne(x => x.LastLoginInfo, info =>
-        {
-            info.ToJson();
-        });
+        builder.OwnsOne(x => x.LastLoginInfo, info => { info.ToJson(); });
 
         builder.Property(x => x.TotpRecoveryCodes)
-               .HasColumnType("text[]");
+            .HasColumnType("text[]");
 
         builder.Property(x => x.RegisterTime)
-               .HasColumnType("timestamptz")
-               .HasDefaultValueSql("CURRENT_TIMESTAMP");
+            .HasColumnType("timestamptz")
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
         // MyIssuedInvites relationship is configured in InviteConfiguration
     }

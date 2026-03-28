@@ -48,7 +48,6 @@ public class OAuthAppController : ControllerBase
 
             // Only return applications created by current user
             if (userId == currentUserId)
-            {
                 apps.Add(new OAuthAppResponse
                 {
                     Id = appId ?? string.Empty,
@@ -59,7 +58,6 @@ public class OAuthAppController : ControllerBase
                     ApplicationType = applicationType ?? "web",
                     ConsentType = consentType ?? "explicit"
                 });
-            }
         }
 
         return Ok(apps);
@@ -71,17 +69,12 @@ public class OAuthAppController : ControllerBase
     public async Task<ActionResult<CreateAppResponse>> Create([FromBody] CreateAppRequest request)
     {
         var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(currentUserId))
-        {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
+        if (string.IsNullOrEmpty(currentUserId)) return Unauthorized(new { message = "User not authenticated" });
 
         // Validate the request
         var validationResults = request.Validate();
         if (validationResults.Count > 0)
-        {
             return BadRequest(new { errors = validationResults.Select(r => r.ErrorMessage) });
-        }
 
         // Generate a random client ID with prefix "sb_app_"
         var clientId = "sb_app_" + Utils.GenerateRandomSecret(16);
@@ -128,12 +121,8 @@ public class OAuthAppController : ControllerBase
         };
 
         if (request.RedirectUris is not null)
-        {
             foreach (var uri in request.RedirectUris)
-            {
                 descriptor.RedirectUris.Add(new Uri(uri));
-            }
-        }
 
         try
         {
@@ -142,10 +131,10 @@ public class OAuthAppController : ControllerBase
             _logger.LogInformation("OAuth app {ClientId} created by user {UserId}", clientId, currentUserId);
 
             var response = new CreateAppResponse(
-                Id: appId ?? string.Empty,
-                ClientId: clientId,
-                ClientSecret: clientSecret,
-                DisplayName: request.DisplayName
+                appId ?? string.Empty,
+                clientId,
+                clientSecret,
+                request.DisplayName
             );
 
             return CreatedAtAction(nameof(GetMyApps), response);
@@ -164,10 +153,7 @@ public class OAuthAppController : ControllerBase
     public async Task<IActionResult> Delete(string id)
     {
         var app = await _applicationManager.FindByIdAsync(id);
-        if (app is null)
-        {
-            return NotFound();
-        }
+        if (app is null) return NotFound();
 
         // Check permission: only the application owner can delete
         var properties = await _applicationManager.GetPropertiesAsync(app);
@@ -176,7 +162,8 @@ public class OAuthAppController : ControllerBase
 
         if (ownerUserId != currentUserId)
         {
-            _logger.LogWarning("User {CurrentUserId} attempted to delete OAuth app {AppId} owned by {OwnerUserId}", currentUserId, id, ownerUserId);
+            _logger.LogWarning("User {CurrentUserId} attempted to delete OAuth app {AppId} owned by {OwnerUserId}",
+                currentUserId, id, ownerUserId);
             return Forbid();
         }
 
@@ -193,10 +180,7 @@ public class OAuthAppController : ControllerBase
     public async Task<ActionResult<OAuthAppDetailResponse>> GetAppById(string id)
     {
         var app = await _applicationManager.FindByIdAsync(id);
-        if (app is null)
-        {
-            return NotFound();
-        }
+        if (app is null) return NotFound();
 
         // Check permission: only the application owner can view details
         var properties = await _applicationManager.GetPropertiesAsync(app);
@@ -205,7 +189,8 @@ public class OAuthAppController : ControllerBase
 
         if (ownerUserId != currentUserId)
         {
-            _logger.LogWarning("User {CurrentUserId} attempted to view OAuth app {AppId} owned by {OwnerUserId}", currentUserId, id, ownerUserId);
+            _logger.LogWarning("User {CurrentUserId} attempted to view OAuth app {AppId} owned by {OwnerUserId}",
+                currentUserId, id, ownerUserId);
             return Forbid();
         }
 
@@ -240,10 +225,7 @@ public class OAuthAppController : ControllerBase
     public async Task<ActionResult<OAuthAppResponse>> UpdateApp(string id, [FromBody] UpdateAppRequest request)
     {
         var app = await _applicationManager.FindByIdAsync(id);
-        if (app is null)
-        {
-            return NotFound();
-        }
+        if (app is null) return NotFound();
 
         // Check permission: only the application owner can update
         var properties = await _applicationManager.GetPropertiesAsync(app);
@@ -252,16 +234,15 @@ public class OAuthAppController : ControllerBase
 
         if (ownerUserId != currentUserId)
         {
-            _logger.LogWarning("User {CurrentUserId} attempted to update OAuth app {AppId} owned by {OwnerUserId}", currentUserId, id, ownerUserId);
+            _logger.LogWarning("User {CurrentUserId} attempted to update OAuth app {AppId} owned by {OwnerUserId}",
+                currentUserId, id, ownerUserId);
             return Forbid();
         }
 
         // Validate the request
         var validationResults = request.Validate();
         if (validationResults.Count > 0)
-        {
             return BadRequest(new { errors = validationResults.Select(r => r.ErrorMessage) });
-        }
 
         // Populate descriptor from existing application to preserve all properties
         var descriptor = new OpenIddictApplicationDescriptor();
@@ -273,31 +254,24 @@ public class OAuthAppController : ControllerBase
         if (request.RedirectUris is not null)
         {
             descriptor.RedirectUris.Clear();
-            foreach (var uri in request.RedirectUris)
-            {
-                descriptor.RedirectUris.Add(new Uri(uri));
-            }
+            foreach (var uri in request.RedirectUris) descriptor.RedirectUris.Add(new Uri(uri));
         }
 
         if (request.ClientType is not null)
-        {
             descriptor.ClientType = request.ClientType.ToLowerInvariant() switch
             {
                 "public" => ClientTypes.Public,
                 "confidential" => ClientTypes.Confidential,
                 _ => ClientTypes.Confidential
             };
-        }
 
         if (request.ApplicationType is not null)
-        {
             descriptor.ApplicationType = request.ApplicationType.ToLowerInvariant() switch
             {
                 "web" => ApplicationTypes.Web,
                 "native" => ApplicationTypes.Native,
                 _ => ApplicationTypes.Web
             };
-        }
 
         try
         {
@@ -339,10 +313,7 @@ public class OAuthAppController : ControllerBase
     public async Task<ActionResult<OAuthAppResponse>> PatchApp(string id, [FromBody] PatchAppRequest request)
     {
         var app = await _applicationManager.FindByIdAsync(id);
-        if (app is null)
-        {
-            return NotFound();
-        }
+        if (app is null) return NotFound();
 
         // Check permission: only the application owner can update
         var properties = await _applicationManager.GetPropertiesAsync(app);
@@ -351,55 +322,44 @@ public class OAuthAppController : ControllerBase
 
         if (ownerUserId != currentUserId)
         {
-            _logger.LogWarning("User {CurrentUserId} attempted to patch OAuth app {AppId} owned by {OwnerUserId}", currentUserId, id, ownerUserId);
+            _logger.LogWarning("User {CurrentUserId} attempted to patch OAuth app {AppId} owned by {OwnerUserId}",
+                currentUserId, id, ownerUserId);
             return Forbid();
         }
 
         // Validate the request
         var validationResults = request.Validate();
         if (validationResults.Count > 0)
-        {
             return BadRequest(new { errors = validationResults.Select(r => r.ErrorMessage) });
-        }
 
         // Populate descriptor from existing application to preserve all properties
         var descriptor = new OpenIddictApplicationDescriptor();
         await _applicationManager.PopulateAsync(descriptor, app);
 
         // Update only the fields that are provided in the request
-        if (request.DisplayName is not null)
-        {
-            descriptor.DisplayName = request.DisplayName;
-        }
+        if (request.DisplayName is not null) descriptor.DisplayName = request.DisplayName;
 
         if (request.RedirectUris is not null)
         {
             descriptor.RedirectUris.Clear();
-            foreach (var uri in request.RedirectUris)
-            {
-                descriptor.RedirectUris.Add(new Uri(uri));
-            }
+            foreach (var uri in request.RedirectUris) descriptor.RedirectUris.Add(new Uri(uri));
         }
 
         if (request.ClientType is not null)
-        {
             descriptor.ClientType = request.ClientType.ToLowerInvariant() switch
             {
                 "public" => ClientTypes.Public,
                 "confidential" => ClientTypes.Confidential,
                 _ => ClientTypes.Confidential
             };
-        }
 
         if (request.ApplicationType is not null)
-        {
             descriptor.ApplicationType = request.ApplicationType.ToLowerInvariant() switch
             {
                 "web" => ApplicationTypes.Web,
                 "native" => ApplicationTypes.Native,
                 _ => ApplicationTypes.Web
             };
-        }
 
         try
         {
@@ -440,10 +400,7 @@ public class OAuthAppController : ControllerBase
     public async Task<ActionResult<NewSecretResponse>> RegenerateSecret(string id)
     {
         var app = await _applicationManager.FindByIdAsync(id);
-        if (app is null)
-        {
-            return NotFound();
-        }
+        if (app is null) return NotFound();
 
         // Check permission: only the application owner can regenerate secret
         var properties = await _applicationManager.GetPropertiesAsync(app);
@@ -452,7 +409,9 @@ public class OAuthAppController : ControllerBase
 
         if (ownerUserId != currentUserId)
         {
-            _logger.LogWarning("User {CurrentUserId} attempted to regenerate secret for OAuth app {AppId} owned by {OwnerUserId}", currentUserId, id, ownerUserId);
+            _logger.LogWarning(
+                "User {CurrentUserId} attempted to regenerate secret for OAuth app {AppId} owned by {OwnerUserId}",
+                currentUserId, id, ownerUserId);
             return Forbid();
         }
 

@@ -28,10 +28,7 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.OwnsOne(u => u.LastLoginInfo, builder =>
-            {
-                builder.ToJson();
-            });
+            entity.OwnsOne(u => u.LastLoginInfo, builder => { builder.ToJson(); });
         });
     }
 

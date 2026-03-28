@@ -39,33 +39,24 @@ public class FileShareController : BaseApiController
     {
         var fileShare = await _db.FileShares.FindAsync(shortId);
 
-        if (fileShare == null)
-        {
-            return NotFound(new MessageResponse { Message = "Share link not found" });
-        }
+        if (fileShare == null) return NotFound(new MessageResponse { Message = "Share link not found" });
 
         // 检查是否启用
         if (!fileShare.IsEnabled)
-        {
-            return StatusCode(StatusCodes.Status410Gone, 
+            return StatusCode(StatusCodes.Status410Gone,
                 new MessageResponse { Message = "This share link has been disabled" });
-        }
 
         // 检查是否过期
         if (fileShare.ExpiresAt.HasValue && fileShare.ExpiresAt.Value < DateTime.UtcNow)
-        {
-            return StatusCode(StatusCodes.Status410Gone, 
+            return StatusCode(StatusCodes.Status410Gone,
                 new MessageResponse { Message = "This share link has expired" });
-        }
 
         // 检查是否需要登录
         if (!fileShare.IsPublic)
         {
             var currentUser = await CurrentUser;
             if (currentUser == null)
-            {
                 return Unauthorized(new MessageResponse { Message = "Authentication required to access this file" });
-            }
         }
 
         // 生成 Presigned URL（5 分钟）
@@ -90,7 +81,7 @@ public class FileShareController : BaseApiController
         catch (AmazonS3Exception ex)
         {
             _logger.LogError(ex, "Failed to generate presigned URL for file share {ShortId}", shortId);
-            return StatusCode(StatusCodes.Status500InternalServerError, 
+            return StatusCode(StatusCodes.Status500InternalServerError,
                 new MessageResponse { Message = "Failed to generate download URL" });
         }
     }

@@ -13,13 +13,13 @@ public class SettingConfiguration : IEntityTypeConfiguration<Setting>
         builder.HasKey(x => x.Key);
 
         builder.Property(x => x.Key)
-               .HasMaxLength(255)
-               .IsRequired();
+            .HasMaxLength(255)
+            .IsRequired();
 
         builder.Property(x => x.Value)
-               .HasColumnType("text");
+            .HasColumnType("text");
 
         builder.Property(x => x.Type)
-               .HasConversion<int>();
+            .HasConversion<int>();
     }
 }

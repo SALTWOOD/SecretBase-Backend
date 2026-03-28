@@ -19,9 +19,9 @@ public class FileShareCreateRequest
 public class FileShareUpdateRequest
 {
     public string? Key { get; set; }
-    
+
     public string? Bucket { get; set; }
-    
+
     public bool? IsEnabled { get; set; }
 
     public bool? IsPublic { get; set; }

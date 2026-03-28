@@ -25,7 +25,8 @@ public class SafeHttpAccess
         return await SendRequestAsync(HttpMethod.Post, url, body, headers);
     }
 
-    private async Task<object?> SendRequestAsync(HttpMethod method, string url, object? body = null, Dictionary<string, string>? headers = null)
+    private async Task<object?> SendRequestAsync(HttpMethod method, string url, object? body = null,
+        Dictionary<string, string>? headers = null)
     {
         try
         {
@@ -36,10 +37,8 @@ public class SafeHttpAccess
             var request = new HttpRequestMessage(method, url);
 
             if (headers != null)
-            {
                 foreach (var header in headers)
                     request.Headers.TryAddWithoutValidation(header.Key, header.Value);
-            }
 
             if (body != null)
             {
@@ -51,17 +50,18 @@ public class SafeHttpAccess
             var content = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogWarning("[{Shortcode}] Http {Method} failed: {Url} - {StatusCode}", 
+                _logger.LogWarning("[{Shortcode}] Http {Method} failed: {Url} - {StatusCode}",
                     _shortcodeName, method, url, response.StatusCode);
-            }
 
-            try 
+            try
             {
                 using var doc = JsonDocument.Parse(content);
                 return content;
             }
-            catch { return content; }
+            catch
+            {
+                return content;
+            }
         }
         catch (Exception ex)
         {

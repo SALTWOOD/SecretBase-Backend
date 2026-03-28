@@ -1,6 +1,6 @@
 namespace backend.Controllers.OAuth;
 
-using backend.Database;
+using Database;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Abstractions;
@@ -39,19 +39,16 @@ public class OAuthConsentController : ControllerBase
     public async Task<ActionResult<IEnumerable<OAuthConsentResponse>>> GetMyConsents()
     {
         var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(currentUserId))
-        {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
+        if (string.IsNullOrEmpty(currentUserId)) return Unauthorized(new { message = "User not authenticated" });
 
         var consents = new List<OAuthConsentResponse>();
 
         await foreach (var authorization in _authorizationManager.FindAsync(
-            subject: currentUserId,
-            status: OpenIddictConstants.Statuses.Valid,
-            type: OpenIddictConstants.AuthorizationTypes.Permanent,
-            client: null,
-            scopes: null))
+                           currentUserId,
+                           status: OpenIddictConstants.Statuses.Valid,
+                           type: OpenIddictConstants.AuthorizationTypes.Permanent,
+                           client: null,
+                           scopes: null))
         {
             var applicationId = await _authorizationManager.GetApplicationIdAsync(authorization);
             if (applicationId is null) continue;
@@ -87,31 +84,26 @@ public class OAuthConsentController : ControllerBase
     public async Task<IActionResult> RevokeConsent(string clientId)
     {
         var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(currentUserId))
-        {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
+        if (string.IsNullOrEmpty(currentUserId)) return Unauthorized(new { message = "User not authenticated" });
 
         // Find application by client_id
         var application = await _applicationManager.FindByClientIdAsync(clientId);
-        if (application is null)
-        {
-            return NotFound(new { message = "Application not found" });
-        }
+        if (application is null) return NotFound(new { message = "Application not found" });
 
         var applicationId = await _applicationManager.GetIdAsync(application);
 
         // Find authorization for this user and application
         await foreach (var authorization in _authorizationManager.FindAsync(
-            subject: currentUserId,
-            client: applicationId,
-            status: OpenIddictConstants.Statuses.Valid,
-            type: OpenIddictConstants.AuthorizationTypes.Permanent,
-            scopes: null))
+                           currentUserId,
+                           applicationId,
+                           OpenIddictConstants.Statuses.Valid,
+                           OpenIddictConstants.AuthorizationTypes.Permanent,
+                           null))
         {
             // Revoke the authorization
             await _authorizationManager.TryRevokeAsync(authorization);
-            _logger.LogInformation("OAuth consent for client {ClientId} revoked by user {UserId}", clientId, currentUserId);
+            _logger.LogInformation("OAuth consent for client {ClientId} revoked by user {UserId}", clientId,
+                currentUserId);
         }
 
         return NoContent();
@@ -125,18 +117,15 @@ public class OAuthConsentController : ControllerBase
     public async Task<ActionResult<IEnumerable<OAuthTokenResponse>>> GetMyTokens()
     {
         var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(currentUserId))
-        {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
+        if (string.IsNullOrEmpty(currentUserId)) return Unauthorized(new { message = "User not authenticated" });
 
         var tokens = new List<OAuthTokenResponse>();
 
         await foreach (var token in _tokenManager.FindAsync(
-            subject: currentUserId,
-            status: OpenIddictConstants.Statuses.Valid,
-            client: null,
-            type: null))
+                           currentUserId,
+                           status: OpenIddictConstants.Statuses.Valid,
+                           client: null,
+                           type: null))
         {
             var tokenType = await _tokenManager.GetTypeAsync(token);
             var applicationId = await _tokenManager.GetApplicationIdAsync(token);
@@ -177,22 +166,17 @@ public class OAuthConsentController : ControllerBase
     public async Task<IActionResult> RevokeToken(string id)
     {
         var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(currentUserId))
-        {
-            return Unauthorized(new { message = "User not authenticated" });
-        }
+        if (string.IsNullOrEmpty(currentUserId)) return Unauthorized(new { message = "User not authenticated" });
 
         var token = await _tokenManager.FindByIdAsync(id);
-        if (token is null)
-        {
-            return NotFound(new { message = "Token not found" });
-        }
+        if (token is null) return NotFound(new { message = "Token not found" });
 
         // Check if this token belongs to the current user
         var subject = await _tokenManager.GetSubjectAsync(token);
         if (subject != currentUserId)
         {
-            _logger.LogWarning("User {CurrentUserId} attempted to revoke token {TokenId} owned by {Subject}", currentUserId, id, subject);
+            _logger.LogWarning("User {CurrentUserId} attempted to revoke token {TokenId} owned by {Subject}",
+                currentUserId, id, subject);
             return Forbid();
         }
 

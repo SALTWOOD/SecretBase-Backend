@@ -7,23 +7,19 @@ public class Comment
 {
     public int Id { get; set; }
 
-    [MaxLength(2000)]
-    public required string Content { get; set; }
+    [MaxLength(2000)] public required string Content { get; set; }
 
     public int ArticleId { get; set; }
 
-    [JsonIgnore]
-    public Article? Article { get; set; }
+    [JsonIgnore] public Article? Article { get; set; }
 
     public int AuthorId { get; set; }
 
-    [JsonIgnore]
-    public User? Author { get; set; }
+    [JsonIgnore] public User? Author { get; set; }
 
     public int? ParentCommentId { get; set; }
 
-    [JsonIgnore]
-    public Comment? ParentComment { get; set; }
+    [JsonIgnore] public Comment? ParentComment { get; set; }
 
     public List<Comment> Replies { get; set; } = new();
 

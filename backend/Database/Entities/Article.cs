@@ -13,8 +13,7 @@ public class Article
 
     public int AuthorId { get; set; }
 
-    [JsonIgnore]
-    public User? Author { get; set; }
+    [JsonIgnore] public User? Author { get; set; }
 
     public List<Comment> Comments { get; set; } = new();
 

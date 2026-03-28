@@ -66,6 +66,7 @@ public class Shortcode
     /// 创建者（管理员）
     /// </summary>
     public int CreatedByUserId { get; set; }
+
     public User CreatedBy { get; set; } = null!;
 }
 
