@@ -398,79 +398,64 @@ public class AdminStorageBucketController : BaseApiController
 
 #region Request/Response Models
 
-public class S3ObjectResponse
+public readonly record struct S3ObjectResponse
 {
-    public required string Key { get; set; }
-
-    public long Size { get; set; }
-
-    public DateTime LastModified { get; set; }
-
-    public string? ETag { get; set; }
-
-    public string? StorageClass { get; set; }
+    public required string Key { get; init; }
+    public long Size { get; init; }
+    public DateTime LastModified { get; init; }
+    public string? ETag { get; init; }
+    public string? StorageClass { get; init; }
 }
 
-public class S3ObjectMetadataResponse
+public readonly record struct S3ObjectMetadataResponse
 {
-    public required string Key { get; set; }
-
-    public string? ContentType { get; set; }
-
-    public long ContentLength { get; set; }
-
-    public DateTime LastModified { get; set; }
-
-    public string? ETag { get; set; }
-
-    public Dictionary<string, string> Metadata { get; set; } = new();
+    public required string Key { get; init; }
+    public string? ContentType { get; init; }
+    public long ContentLength { get; init; }
+    public DateTime LastModified { get; init; }
+    public string? ETag { get; init; }
+    public Dictionary<string, string> Metadata { get; init; }
 }
 
-public class PresignedUrlResponse
+public readonly record struct PresignedUrlResponse
 {
-    public required string Url { get; set; }
-
-    public required string Key { get; set; }
-
-    public DateTime ExpiresAt { get; set; }
+    public required string Url { get; init; }
+    public required string Key { get; init; }
+    public DateTime ExpiresAt { get; init; }
 }
 
-public class PresignUploadRequest
+public readonly record struct PresignUploadRequest
 {
-    public required string Key { get; set; }
-
-    public string? ContentType { get; set; }
-
-    public int? ExpirationMinutes { get; set; }
+    public required string Key { get; init; }
+    public string? ContentType { get; init; }
+    public int? ExpirationMinutes { get; init; }
 }
 
-public class BatchDeleteResponse
+public readonly record struct BatchDeleteResponse
 {
-    public List<string> DeletedKeys { get; set; } = new();
-
-    public List<string> FailedKeys { get; set; } = new();
+    public List<string> DeletedKeys { get; init; }
+    public List<string> FailedKeys { get; init; }
 }
 
-public class CopyFileRequest
+public readonly record struct CopyFileRequest
 {
-    public required string SourceKey { get; set; }
-
-    public required string DestinationKey { get; set; }
+    public required string SourceKey { get; init; }
+    public required string DestinationKey { get; init; }
 }
 
-public class BucketStatusResponse
+public readonly record struct BucketStatusResponse
 {
-    public required string BucketName { get; set; }
+    public required string BucketName { get; init; }
+    public string? Region { get; init; }
+    public int ObjectCount { get; init; }
+    public long TotalSizeBytes { get; init; }
+    public bool IsAccessible { get; init; }
+    public string? ErrorMessage { get; init; }
+}
 
-    public string? Region { get; set; }
-
-    public int ObjectCount { get; set; }
-
-    public long TotalSizeBytes { get; set; }
-
-    public bool IsAccessible { get; set; }
-
-    public string? ErrorMessage { get; set; }
+public readonly record struct UrlResponse
+{
+    public string Url { get; init; }
 }
 
 #endregion
