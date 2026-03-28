@@ -398,180 +398,78 @@ public class AdminStorageBucketController : BaseApiController
 
 #region Request/Response Models
 
-/// <summary>
-/// S3 对象响应
-/// </summary>
 public class S3ObjectResponse
 {
-    /// <summary>
-    /// 对象键名
-    /// </summary>
     public required string Key { get; set; }
 
-    /// <summary>
-    /// 文件大小（字节）
-    /// </summary>
     public long Size { get; set; }
 
-    /// <summary>
-    /// 最后修改时间
-    /// </summary>
     public DateTime LastModified { get; set; }
 
-    /// <summary>
-    /// ETag
-    /// </summary>
     public string? ETag { get; set; }
 
-    /// <summary>
-    /// 存储类型
-    /// </summary>
     public string? StorageClass { get; set; }
 }
 
-/// <summary>
-/// S3 对象元数据响应
-/// </summary>
 public class S3ObjectMetadataResponse
 {
-    /// <summary>
-    /// 对象键名
-    /// </summary>
     public required string Key { get; set; }
 
-    /// <summary>
-    /// 内容类型
-    /// </summary>
     public string? ContentType { get; set; }
 
-    /// <summary>
-    /// 内容长度
-    /// </summary>
     public long ContentLength { get; set; }
 
-    /// <summary>
-    /// 最后修改时间
-    /// </summary>
     public DateTime LastModified { get; set; }
 
-    /// <summary>
-    /// ETag
-    /// </summary>
     public string? ETag { get; set; }
 
-    /// <summary>
-    /// 用户自定义元数据
-    /// </summary>
     public Dictionary<string, string> Metadata { get; set; } = new();
 }
 
-/// <summary>
-/// 预签名URL响应
-/// </summary>
 public class PresignedUrlResponse
 {
-    /// <summary>
-    /// 预签名URL
-    /// </summary>
     public required string Url { get; set; }
 
-    /// <summary>
-    /// 对象键名
-    /// </summary>
     public required string Key { get; set; }
 
-    /// <summary>
-    /// 过期时间
-    /// </summary>
     public DateTime ExpiresAt { get; set; }
 }
 
-/// <summary>
-/// 预签名上传请求
-/// </summary>
 public class PresignUploadRequest
 {
-    /// <summary>
-    /// 对象键名
-    /// </summary>
     public required string Key { get; set; }
 
-    /// <summary>
-    /// 内容类型
-    /// </summary>
     public string? ContentType { get; set; }
 
-    /// <summary>
-    /// URL有效期（分钟），默认15分钟
-    /// </summary>
     public int? ExpirationMinutes { get; set; }
 }
 
-/// <summary>
-/// 批量删除响应
-/// </summary>
 public class BatchDeleteResponse
 {
-    /// <summary>
-    /// 已删除的键名列表
-    /// </summary>
     public List<string> DeletedKeys { get; set; } = new();
 
-    /// <summary>
-    /// 删除失败的键名列表
-    /// </summary>
     public List<string> FailedKeys { get; set; } = new();
 }
 
-/// <summary>
-/// 复制文件请求
-/// </summary>
 public class CopyFileRequest
 {
-    /// <summary>
-    /// 源文件键名
-    /// </summary>
     public required string SourceKey { get; set; }
 
-    /// <summary>
-    /// 目标文件键名
-    /// </summary>
     public required string DestinationKey { get; set; }
 }
 
-/// <summary>
-/// 存储桶状态响应
-/// </summary>
 public class BucketStatusResponse
 {
-    /// <summary>
-    /// 存储桶名称
-    /// </summary>
     public required string BucketName { get; set; }
 
-    /// <summary>
-    /// 区域
-    /// </summary>
     public string? Region { get; set; }
 
-    /// <summary>
-    /// 对象数量
-    /// </summary>
     public int ObjectCount { get; set; }
 
-    /// <summary>
-    /// 总大小（字节）
-    /// </summary>
     public long TotalSizeBytes { get; set; }
 
-    /// <summary>
-    /// 是否可访问
-    /// </summary>
     public bool IsAccessible { get; set; }
 
-    /// <summary>
-    /// 错误信息
-    /// </summary>
     public string? ErrorMessage { get; set; }
 }
 
