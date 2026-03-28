@@ -17,6 +17,7 @@ using System;
 using System.Threading.RateLimiting;
 using backend.Services.Shortcodes;
 using backend.SourceGenerators;
+using backend.Types;
 using ImageProxyClient;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -155,36 +156,31 @@ builder.Services.AddAuthorization(options =>
             .AddRequirements(new MinimumRoleRequirement(UserRole.Admin)));
 });
 
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.OnRejected = async (context, _) =>
-    {
-        await context.HttpContext.Response.WriteAsJsonAsync(new { message = "Too many requests." });
-    };
-    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-    {
-        var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
-        {
-            Window = TimeSpan.FromMinutes(1),
-            PermitLimit = 60
-        });
-    });
+// Load rate limiter configuration
+var rateLimiterConfig = new RateLimiterOptions();
+builder.Configuration.GetSection("RateLimiter").Bind(rateLimiterConfig);
 
-    // Add a stricter rate limit policy for OAuth token endpoint
-    options.AddPolicy("TokenEndpoint", context =>
+if (rateLimiterConfig.Enabled)
+{
+    builder.Services.AddRateLimiter(options =>
     {
-        var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
+        options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        options.OnRejected = async (context, _) =>
         {
-            Window = TimeSpan.FromMinutes(1),
-            PermitLimit = 20, // Stricter limit for token endpoint
-            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
-            QueueLimit = 5
+            await context.HttpContext.Response.WriteAsJsonAsync(new { message = "Too many requests." });
+        };
+        options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        {
+            var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromSeconds(rateLimiterConfig.WindowSeconds),
+                PermitLimit = rateLimiterConfig.PermitLimit,
+                QueueLimit = rateLimiterConfig.QueueLimit
+            });
         });
     });
-});
+}
 
 #endregion
 
@@ -260,7 +256,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("DefaultCorsPolicy");
-app.UseRateLimiter();
+if (rateLimiterConfig.Enabled)
+{
+    app.UseRateLimiter();
+}
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
