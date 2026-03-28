@@ -145,6 +145,16 @@ public class AdminFileShareController : BaseApiController
         }
 
         // 更新字段
+        if (request.Key != null)
+        {
+            fileShare.Key = request.Key;
+        }
+        
+        if (request.Bucket != null)
+        {
+            fileShare.Bucket = request.Bucket;
+        }
+        
         if (request.IsEnabled.HasValue)
         {
             fileShare.IsEnabled = request.IsEnabled.Value;
