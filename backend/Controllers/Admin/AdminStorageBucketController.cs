@@ -40,12 +40,17 @@ public class AdminStorageBucketController : BaseApiController
     /// </summary>
     /// <param name="prefix">可选的前缀过滤</param>
     /// <param name="maxKeys">最大返回数量，默认 100</param>
+    /// <param name="recursive">是否递归列出所有子目录下的文件。为 true 时展开所有层级，为 false 时仅列出当前目录层级（包含文件夹）。</param>
     [HttpGet("files")]
     [ProducesResponseType<List<S3ObjectResponse>>(StatusCodes.Status200OK)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status500InternalServerError)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> ListFiles([FromQuery] string? prefix = null, [FromQuery] int maxKeys = 100)
+    public async Task<IActionResult> ListFiles(
+        [FromQuery] string? prefix = null, 
+        [FromQuery] int maxKeys = 100,
+        [FromQuery] bool recursive = false
+        )
     {
         try
         {
@@ -54,7 +59,7 @@ public class AdminStorageBucketController : BaseApiController
                 BucketName = BucketName,
                 Prefix = prefix,
                 MaxKeys = maxKeys,
-                Delimiter = "/"
+                Delimiter = recursive ? null : "/"
             };
 
             var response = await _s3Client.ListObjectsV2Async(request);
