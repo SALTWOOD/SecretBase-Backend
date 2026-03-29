@@ -131,8 +131,10 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
             var name = ToPascalCase(child.Name);
             if (child.IsLeaf)
             {
+                var keyWithType = $"{child.FullKey}:{child.DataType}";
+                var conversionCode = GenerateDefaultValueConversion(child.DataType, keyWithType, name);
                 sb.AppendLine(
-                    $"{space}public static SettingNode<{child.DataType}> {name} {{ get; }} = new(\"{child.FullKey}\");");
+                    $"{space}public static SettingNode<{child.DataType}> {name} {{ get; }} = new(\"{child.FullKey}\", {conversionCode});");
             }
             else
             {
@@ -180,6 +182,21 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
                 sb.AppendLine($"{space}}}");
             }
         }
+    }
+
+    /// <summary>
+    /// 生成从 DefaultValues 字典读取并转换类型的代码
+    /// </summary>
+    private static string GenerateDefaultValueConversion(string dataType, string keyWithType, string varName)
+    {
+        return dataType switch
+        {
+            "string" => $"SettingRegistry.DefaultValues.TryGetValue(\"{keyWithType}\", out var __dv_{varName}) ? __dv_{varName} as string : default",
+            "int" => $"SettingRegistry.DefaultValues.TryGetValue(\"{keyWithType}\", out var __dv_{varName}) && __dv_{varName} is int __int_{varName} ? __int_{varName} : default",
+            "bool" => $"SettingRegistry.DefaultValues.TryGetValue(\"{keyWithType}\", out var __dv_{varName}) && __dv_{varName} is bool __bool_{varName} ? __bool_{varName} : default",
+            "double" => $"SettingRegistry.DefaultValues.TryGetValue(\"{keyWithType}\", out var __dv_{varName}) && __dv_{varName} is double __double_{varName} ? __double_{varName} : default",
+            _ => $"SettingRegistry.DefaultValues.TryGetValue(\"{keyWithType}\", out var __dv_{varName}) ? __dv_{varName} as {dataType} : default"
+        };
     }
 
     public static string ToPascalCase(ReadOnlySpan<char> input)

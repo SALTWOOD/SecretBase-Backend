@@ -6,16 +6,20 @@ namespace backend.SourceGenerators;
 public class SettingNode
 {
     protected readonly string _key;
+    protected readonly object? _defaultValue;
     public static ISettingProvider? GlobalProvider { get; set; }
 
-    public SettingNode(string key)
+    public SettingNode(string key, object? defaultValue = null)
     {
         _key = key;
+        _defaultValue = defaultValue;
     }
 
     public async Task<object?> GetValueAsync(object? defaultValue = null)
     {
-        return GlobalProvider != null ? await GlobalProvider.GetAsync(_key, defaultValue) : defaultValue;
+        if (GlobalProvider == null) return defaultValue ?? _defaultValue;
+        var result = await GlobalProvider.GetAsync(_key, defaultValue);
+        return result ?? _defaultValue ?? defaultValue;
     }
 
     public async Task SetValueAsync(object? value)
@@ -34,14 +38,16 @@ public class SettingNode
     }
 }
 
-public class SettingNode<T>(string key) : SettingNode(key)
+public class SettingNode<T>(string key, T? defaultValue = default) : SettingNode(key, defaultValue)
 {
-    public async Task<T?> GetValueAsync(T? defaultValue = default)
+    public new async Task<T?> GetValueAsync(T? overrideDefaultValue = default)
     {
-        return GlobalProvider != null ? await GlobalProvider.GetAsync(_key, defaultValue) : defaultValue;
+        if (GlobalProvider == null) return _defaultValue is T dv ? dv : overrideDefaultValue;
+        var result = await GlobalProvider.GetAsync<T>(_key, overrideDefaultValue);
+        return result is not null ? result : (_defaultValue is T builtinDv ? builtinDv : overrideDefaultValue);
     }
 
-    public async Task SetValueAsync(T value)
+    public new async Task SetValueAsync(T value)
     {
         await GlobalProvider?.SetAsync(_key, value)!;
     }
