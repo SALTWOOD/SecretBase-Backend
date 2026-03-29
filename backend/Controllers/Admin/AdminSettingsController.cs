@@ -1,3 +1,4 @@
+using System.Text.Json;
 using backend.Database;
 using backend.Database.Entities;
 using backend.Services;
@@ -21,7 +22,7 @@ public readonly record struct SettingListItem
 
 public readonly record struct UpdateSettingBody
 {
-    public object? Value { get; init; }
+    public JsonElement Value { get; init; }
 }
 
 [Authorize(Policy = "AdminOnly")]
@@ -106,7 +107,21 @@ public class AdminSettingsController(BaseServices deps) : BaseApiController(deps
         if (SettingNode.GlobalProvider == null)
             return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Setting provider not available" });
 
-        await SettingNode.GlobalProvider.SetAsync(key, body.Value);
+        var value = body.Value;
+        object? result = value.ValueKind switch
+        {
+            JsonValueKind.String => value.GetString(),
+            JsonValueKind.Number => value.TryGetInt32(out int i) 
+                ? i
+                : value.GetDouble(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            JsonValueKind.Object or JsonValueKind.Array => throw new NotImplementedException(), 
+            _ => null
+        };
+        
+        await SettingNode.GlobalProvider.SetAsync(key, result);
 
         return NoContent();
     }
