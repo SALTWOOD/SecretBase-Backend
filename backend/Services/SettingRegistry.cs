@@ -7,62 +7,48 @@ public static partial class SettingRegistry
 {
     public static readonly string[] Keys =
     [
-        // --- Site SEO ---
-        "site.seo.title:string",
-        "site.seo.description:string",
-        "site.seo.keywords:string",
-        "site.seo.og_title:string",
-        "site.seo.og_description:string",
-        "site.seo.og_image:string",
-        "site.seo.twitter_card:string",
-        "site.seo.robots:string",
-
-        // --- Site Security ---
+        "site.seo.general.title:string",
+        "site.seo.general.description:string",
+        "site.seo.general.keywords:string",
+        "site.seo.general.robots:string",
+        "site.seo.og.title:string",
+        "site.seo.og.description:string",
+        "site.seo.og.image:string",
+        "site.seo.social.twitter_card:string",
         "site.security.cookie.auto_renew:bool",
         "site.security.cookie.expire_hours:int",
-
-        // --- User Registration ---
         "site.user.registration.enabled:bool",
         "site.user.registration.force_invitation:bool",
-
-        // --- Home Background ---
         "site.home.background.url:string",
-        "site.home.background.blur:int", // 虚化度
-        "site.home.background.opacity:double", // 透明度
-
-        // --- Home Banner ---
+        "site.home.background.blur:int",
+        "site.home.background.opacity:double",
         "site.home.banner.content:string",
-        "site.home.banner.display_mode:string" // full | mini | screen | hidden
+        "site.home.banner.display_mode:string",
+        "site.footer.beian.icp:string",
+        "site.footer.beian.police:string"
     ];
 
     public static readonly Dictionary<string, object?> DefaultValues = new()
     {
-        // --- Site SEO ---
-        ["site.seo.title:string"] = "默认站点",
-        ["site.seo.description:string"] = "基于 ASP.NET Core 与 Nuxt 4 强力驱动的站点",
-        ["site.seo.keywords:string"] = "blog, dotnet, nuxt, site",
-        ["site.seo.og_title:string"] = "Default Website",
-        ["site.seo.og_description:string"] = "基于 ASP.NET Core 与 Nuxt 4 强力驱动的站点",
-        ["site.seo.og_image:string"] = "/default-og-image.png",
-        ["site.seo.twitter_card:string"] = "summary_large_image",
-        ["site.seo.robots:string"] = "index, follow",
-
-        // --- Site Security ---
+        ["site.seo.general.title:string"] = "默认站点",
+        ["site.seo.general.description:string"] = "基于 ASP.NET Core 与 Nuxt 4 强力驱动的站点",
+        ["site.seo.general.keywords:string"] = "blog, dotnet, nuxt, site",
+        ["site.seo.general.robots:string"] = "index, follow",
+        ["site.seo.og.title:string"] = "Default Website",
+        ["site.seo.og.description:string"] = "基于 ASP.NET Core 与 Nuxt 4 强力驱动的站点",
+        ["site.seo.og.image:string"] = "/default-og-image.png",
+        ["site.seo.social.twitter_card:string"] = "summary_large_image",
         ["site.security.cookie.auto_renew:bool"] = true,
         ["site.security.cookie.expire_hours:int"] = 72,
-
-        // --- User Registration ---
         ["site.user.registration.enabled:bool"] = true,
         ["site.user.registration.force_invitation:bool"] = false,
-
-        // --- Home Background ---
         ["site.home.background.url:string"] = null,
         ["site.home.background.blur:int"] = 0,
         ["site.home.background.opacity:double"] = 1.0,
-
-        // --- Home Banner ---
         ["site.home.banner.content:string"] = "Welcome to My Site",
-        ["site.home.banner.display_mode:string"] = "full"
+        ["site.home.banner.display_mode:string"] = "full",
+        ["site.footer.beian.icp:string"] = "",
+        ["site.footer.beian.police:string"] = ""
     };
 
     /// <summary>
