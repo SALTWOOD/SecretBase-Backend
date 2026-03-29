@@ -8,5 +8,7 @@ public class ArticleUpdateModel
 
     [Required] [MaxLength(10000)] public required string Content { get; set; }
 
+    [MaxLength(500)] public string? CoverUrl { get; set; }
+
     public bool IsPublished { get; set; }
 }

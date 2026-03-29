@@ -15,6 +15,7 @@ public class ArticleConfiguration : IEntityTypeConfiguration<Article>
         builder.Property(x => x.Title).HasMaxLength(200).IsRequired();
         builder.Property(x => x.Content).HasMaxLength(10000).IsRequired();
         builder.Property(x => x.AuthorId).IsRequired();
+        builder.Property(x => x.CoverUrl).HasMaxLength(500);
 
         builder.Property(x => x.CreatedAt)
             .HasColumnType("timestamptz")

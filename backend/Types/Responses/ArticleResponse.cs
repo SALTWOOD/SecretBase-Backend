@@ -10,5 +10,7 @@ public class ArticleResponse
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public bool IsPublished { get; set; }
+    public string? CoverUrl { get; set; }
+    public string Cover => $"/article/{Id}/cover";
     public int CommentCount { get; set; }
 }

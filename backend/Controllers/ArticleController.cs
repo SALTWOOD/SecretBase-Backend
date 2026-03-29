@@ -3,6 +3,7 @@ using backend.Services;
 using backend.Types.Request;
 using backend.Types.Response;
 using backend.Types.Responses;
+using ImageProxyClient;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 namespace backend.Controllers;
 
 [Route("articles")]
-public class ArticleController(BaseServices deps) : BaseApiController(deps)
+public class ArticleController(BaseServices deps, IImgproxyClient imgproxyClient) : BaseApiController(deps)
 {
     [HttpGet]
     [ProducesResponseType(typeof(List<ArticleResponse>), StatusCodes.Status200OK)]
@@ -36,6 +37,7 @@ public class ArticleController(BaseServices deps) : BaseApiController(deps)
                 CreatedAt = a.CreatedAt,
                 UpdatedAt = a.UpdatedAt,
                 IsPublished = a.IsPublished,
+                CoverUrl = a.CoverUrl,
                 CommentCount = a.Comments.Count
             })
             .ToListAsync();
@@ -60,6 +62,7 @@ public class ArticleController(BaseServices deps) : BaseApiController(deps)
                 CreatedAt = a.CreatedAt,
                 UpdatedAt = a.UpdatedAt,
                 IsPublished = a.IsPublished,
+                CoverUrl = a.CoverUrl,
                 CommentCount = a.Comments.Count
             })
             .FirstOrDefaultAsync();
@@ -83,6 +86,7 @@ public class ArticleController(BaseServices deps) : BaseApiController(deps)
             Content = model.Content,
             AuthorId = CurrentUserId.Value,
             IsPublished = model.IsPublished,
+            CoverUrl = model.CoverUrl,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -100,6 +104,7 @@ public class ArticleController(BaseServices deps) : BaseApiController(deps)
             CreatedAt = article.CreatedAt,
             UpdatedAt = article.UpdatedAt,
             IsPublished = article.IsPublished,
+            CoverUrl = article.CoverUrl,
             CommentCount = 0
         };
 
@@ -124,6 +129,7 @@ public class ArticleController(BaseServices deps) : BaseApiController(deps)
         article.Title = model.Title;
         article.Content = model.Content;
         article.IsPublished = model.IsPublished;
+        article.CoverUrl = model.CoverUrl;
         article.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
@@ -138,6 +144,7 @@ public class ArticleController(BaseServices deps) : BaseApiController(deps)
             CreatedAt = article.CreatedAt,
             UpdatedAt = article.UpdatedAt,
             IsPublished = article.IsPublished,
+            CoverUrl = article.CoverUrl,
             CommentCount = article.Comments.Count
         };
 
@@ -162,5 +169,26 @@ public class ArticleController(BaseServices deps) : BaseApiController(deps)
         await _db.SaveChangesAsync();
 
         return Ok(new MessageResponse("Article deleted successfully."));
+    }
+
+    [HttpGet("{id}/cover")]
+    public async Task<IActionResult> GetCover(int id)
+    {
+        var article = await _db.Articles.FindAsync(id);
+        var url = article?.CoverUrl;
+        if (url == null) return NotFound(new MessageResponse("Article not found or missing cover image."));
+        Uri uri = new Uri(url);
+        switch (uri.Scheme.ToLower())
+        {
+            case "s3":
+                var image = imgproxyClient.BuildUrl(url, options =>
+                    options.Resize(1200, 675, ResizeMode.Fit)
+                        .Format(ImageFormat.WebP)
+                        .Expires(DateTime.UtcNow.AddHours(1))
+                );
+                return Redirect(image);
+            default:
+                return Redirect(url);
+        }
     }
 }
