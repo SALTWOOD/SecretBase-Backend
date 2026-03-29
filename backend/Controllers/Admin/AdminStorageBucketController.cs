@@ -288,13 +288,18 @@ public class AdminStorageBucketController : BaseApiController
     /// 生成预签名下载 URL
     /// </summary>
     /// <param name="key">文件键名</param>
+    /// <param name="download">是否直接下载文件</param>
     /// <param name="expirationMinutes">URL有效期（分钟），默认 15 分钟</param>
     [HttpGet("presign-download")]
     [ProducesResponseType<PresignedUrlResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public IActionResult GeneratePresignedDownloadUrl([FromQuery] string key, [FromQuery] int expirationMinutes = 15)
+    public IActionResult GeneratePresignedDownloadUrl(
+        [FromQuery] string key,
+        [FromQuery] bool download = false,
+        [FromQuery] int expirationMinutes = 15
+    )
     {
         if (string.IsNullOrWhiteSpace(key)) return BadRequest(new MessageResponse { Message = "Key is required" });
 
@@ -307,6 +312,13 @@ public class AdminStorageBucketController : BaseApiController
                 Verb = HttpVerb.GET,
                 Expires = DateTime.UtcNow.AddMinutes(expirationMinutes)
             };
+            
+            if (download)
+            {
+                var fileName = Path.GetFileName(key);
+                request.ResponseHeaderOverrides.ContentDisposition =
+                    $"attachment; filename*=UTF-8''{Uri.EscapeDataString(fileName)}";
+            }
 
             var url = _s3Client.GetPreSignedURL(request);
 
