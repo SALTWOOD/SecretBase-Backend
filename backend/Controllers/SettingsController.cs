@@ -44,7 +44,7 @@ public class SettingsController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType<SeoMetaResponse>(StatusCodes.Status200OK)]
     public async Task<ActionResult> GetSeo()
     {
-        return Ok(await SettingRegistry.Site.Seo.GetValuesAsObjectAsync());
+        return Ok(await SettingRegistry.Site.Seo.General.GetValuesAsObjectAsync());
     }
 
     [HttpGet("home/background")]
