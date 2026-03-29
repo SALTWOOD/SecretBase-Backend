@@ -21,7 +21,7 @@ public class Article
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-    public bool IsPublished { get; set; } = false;
+    public bool IsPublished { get; set; }
 
     public string? CoverUrl { get; set; }
 }
