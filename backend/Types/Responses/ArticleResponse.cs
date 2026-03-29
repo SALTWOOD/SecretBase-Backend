@@ -11,6 +11,5 @@ public class ArticleResponse
     public DateTime UpdatedAt { get; set; }
     public bool IsPublished { get; set; }
     public string? CoverUrl { get; set; }
-    public string Cover => $"/api/v1/articles/{Id}/cover";
     public int CommentCount { get; set; }
 }
