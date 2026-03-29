@@ -50,6 +50,7 @@ public class AdminFileShareController : BaseApiController
             Bucket = request.Bucket,
             Key = request.Key,
             FileName = request.FileName,
+            Remarks = request.Remarks,
             IsPublic = request.IsPublic,
             IsEnabled = true,
             ExpiresAt = request.ExpiresAt,
@@ -134,6 +135,8 @@ public class AdminFileShareController : BaseApiController
         if (request.Key != null) fileShare.Key = request.Key;
 
         if (request.Bucket != null) fileShare.Bucket = request.Bucket;
+
+        if (request.Remarks != null) fileShare.Remarks = request.Remarks;
 
         if (request.IsEnabled.HasValue) fileShare.IsEnabled = request.IsEnabled.Value;
 

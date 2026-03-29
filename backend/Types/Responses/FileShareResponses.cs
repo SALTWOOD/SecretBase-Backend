@@ -28,6 +28,11 @@ public class FileShareResponse
     public required string FileName { get; set; }
 
     /// <summary>
+    /// 备注
+    /// </summary>
+    public string? Remarks { get; set; }
+
+    /// <summary>
     /// 是否允许匿名访问
     /// </summary>
     public bool isPublic { get; set; }
@@ -65,6 +70,7 @@ public class FileShareResponse
             Bucket = entity.Bucket,
             Key = entity.Key,
             FileName = entity.FileName,
+            Remarks = entity.Remarks,
             isPublic = entity.IsPublic,
             isEnabled = entity.IsEnabled,
             OwnerId = entity.OwnerId,

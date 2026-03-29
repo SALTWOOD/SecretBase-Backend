@@ -12,6 +12,8 @@ public class FileShare
 
     [MaxLength(255)] public string FileName { get; set; } = string.Empty;
 
+    [MaxLength(128)] public string? Remarks { get; set; }
+
     public bool IsPublic { get; set; } = true;
 
     public bool IsEnabled { get; set; } = true;

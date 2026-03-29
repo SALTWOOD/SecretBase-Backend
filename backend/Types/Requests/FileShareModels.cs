@@ -11,6 +11,8 @@ public class FileShareCreateRequest
 
     public required string FileName { get; set; } = string.Empty;
 
+    public string? Remarks { get; set; }
+
     public bool IsPublic { get; set; } = true;
 
     public DateTime? ExpiresAt { get; set; }
@@ -21,6 +23,8 @@ public class FileShareUpdateRequest
     public string? Key { get; set; }
 
     public string? Bucket { get; set; }
+
+    public string? Remarks { get; set; }
 
     public bool? IsEnabled { get; set; }
 

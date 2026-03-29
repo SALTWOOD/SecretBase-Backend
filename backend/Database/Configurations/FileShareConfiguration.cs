@@ -30,6 +30,9 @@ public class FileShareConfiguration : IEntityTypeConfiguration<Entities.FileShar
             .IsRequired()
             .HasMaxLength(255);
 
+        entity.Property(e => e.Remarks)
+            .HasMaxLength(128);
+
         entity.HasOne(e => e.Owner)
             .WithMany()
             .HasForeignKey(e => e.OwnerId)
