@@ -111,9 +111,12 @@ public class AdminSettingsController(BaseServices deps) : BaseApiController(deps
         object? result = value.ValueKind switch
         {
             JsonValueKind.String => value.GetString(),
-            JsonValueKind.Number => value.TryGetInt32(out int i) 
-                ? i
-                : value.GetDouble(),
+            JsonValueKind.Number => value switch 
+            {
+                _ when value.TryGetInt32(out int i) => i,
+                _ when value.TryGetInt64(out long l) => l,
+                _ => (object)value.GetDouble()
+            },
             JsonValueKind.True => true,
             JsonValueKind.False => false,
             JsonValueKind.Null => null,
