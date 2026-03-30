@@ -117,63 +117,85 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
             }
         }
 
-        GenerateNodes(sb, root, 1);
+        GenerateNodes(sb, root, 1, new List<string>());
         sb.AppendLine("}");
         return sb.ToString();
     }
 
-    private void GenerateNodes(StringBuilder sb, Node node, int indent)
+    private void GenerateNodes(StringBuilder sb, Node node, int indent, List<string> parentPascalNames)
     {
         var space = new string(' ', indent * 4);
 
         foreach (var child in node.Children.Values)
         {
-            var name = ToPascalCase(child.Name);
+            var currentPascalName = ToPascalCase(child.Name);
+            var currentHierarchy = new List<string>(parentPascalNames) { currentPascalName };
+
             if (child.IsLeaf)
             {
                 var keyWithType = $"{child.FullKey}:{child.DataType}";
-                var conversionCode = GenerateDefaultValueConversion(child.DataType, keyWithType, name);
+                var conversionCode = GenerateDefaultValueConversion(child.DataType, keyWithType, currentPascalName);
                 sb.AppendLine(
-                    $"{space}public static SettingNode<{child.DataType}> {name} {{ get; }} = new(\"{child.FullKey}\", {conversionCode});");
+                    $"{space}public static SettingNode<{child.DataType}> {currentPascalName} {{ get; }} = new(\"{child.FullKey}\", {conversionCode});");
             }
             else
             {
-                sb.AppendLine($"{space}public static partial class {name} {{");
+                sb.AppendLine($"{space}public static partial class {currentPascalName} {{");
 
-                GenerateNodes(sb, child, indent + 1);
+                GenerateNodes(sb, child, indent + 1, currentHierarchy);
+
+                var localRecordName =
+                    (currentHierarchy.Count > 1 ? string.Join("", currentHierarchy.Skip(1)) : currentHierarchy[0]) +
+                    "Settings";
 
                 sb.AppendLine(
                     $"{space}    public static Task<IDictionary<string, object?>> GetValuesAsync() => SettingNode.GlobalProvider?.GetValuesByPrefixAsync(\"{child.FullPrefix}\") ?? Task.FromResult((IDictionary<string, object?>)new Dictionary<string, object?>());");
 
-                sb.AppendLine($"{space}    public sealed record Data(");
+                sb.AppendLine($"{space}    public sealed record {localRecordName}(");
                 var directMembers = child.Children.Values.ToList();
                 for (var i = 0; i < directMembers.Count; i++)
                 {
                     var m = directMembers[i];
-                    var typeName = m.IsLeaf ? m.DataType : $"{ToPascalCase(m.Name)}.Data";
-                    sb.Append(
-                        $"{space}        {typeName} {ToPascalCase(m.Name)}{(i == directMembers.Count - 1 ? "" : ",")}\n");
+                    var mPascal = ToPascalCase(m.Name);
+                    if (m.IsLeaf)
+                    {
+                        sb.Append($"{space}        {m.DataType} {mPascal}");
+                    }
+                    else
+                    {
+                        var subClassName = mPascal;
+                        var subRecordName = string.Join("", currentHierarchy.Skip(1)) + mPascal + "Settings";
+                        sb.Append($"{space}        {subClassName}.{subRecordName}? {mPascal}");
+                    }
+
+                    sb.Append($"{(i == directMembers.Count - 1 ? "" : ",")}\n");
                 }
 
-                sb.AppendLine($"{space}    ) {{ }}");
+                sb.AppendLine($"{space}    );");
 
-                sb.AppendLine($"{space}    public static async Task<Data> GetValuesAsObjectAsync() {{");
-                sb.AppendLine($"{space}        var dict = await GetValuesAsync();");
-                sb.AppendLine($"{space}        return await GetValuesFromDictAsync(dict);");
-                sb.AppendLine($"{space}    }}");
                 sb.AppendLine(
-                    $"{space}    internal static async Task<Data> GetValuesFromDictAsync(IDictionary<string, object?> dict) {{");
-                sb.AppendLine($"{space}        return new Data(");
+                    $"{space}    public static async Task<{localRecordName}> GetValuesAsObjectAsync(bool includeSubNodes = true) {{");
+                sb.AppendLine($"{space}        var dict = await GetValuesAsync();");
+                sb.AppendLine($"{space}        return await GetValuesFromDictAsync(dict, includeSubNodes);");
+                sb.AppendLine($"{space}    }}");
+
+                sb.AppendLine(
+                    $"{space}    internal static async Task<{localRecordName}> GetValuesFromDictAsync(IDictionary<string, object?> dict, bool includeSubNodes = true) {{");
+                sb.AppendLine($"{space}        return new {localRecordName}(");
                 for (var i = 0; i < directMembers.Count; i++)
                 {
                     var m = directMembers[i];
                     var mName = ToPascalCase(m.Name);
                     if (m.IsLeaf)
+                    {
                         sb.AppendLine(
                             $"{space}            ({m.DataType})(dict.TryGetValue(\"{m.FullKey}\", out var v{i}) ? v{i} : default({m.DataType}))!{(i == directMembers.Count - 1 ? "" : ",")}");
+                    }
                     else
+                    {
                         sb.AppendLine(
-                            $"{space}            await {mName}.GetValuesFromDictAsync(dict){(i == directMembers.Count - 1 ? "" : ",")}");
+                            $"{space}            includeSubNodes ? await {mName}.GetValuesFromDictAsync(dict, includeSubNodes) : null{(i == directMembers.Count - 1 ? "" : ",")}");
+                    }
                 }
 
                 sb.AppendLine($"{space}        );");
@@ -191,11 +213,16 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
     {
         return dataType switch
         {
-            "string" => $"SettingRegistry.DefaultValues.TryGetValue(\"{keyWithType}\", out var __dv_{varName}) ? __dv_{varName} as string : default",
-            "int" => $"SettingRegistry.DefaultValues.TryGetValue(\"{keyWithType}\", out var __dv_{varName}) && __dv_{varName} is int __int_{varName} ? __int_{varName} : default",
-            "bool" => $"SettingRegistry.DefaultValues.TryGetValue(\"{keyWithType}\", out var __dv_{varName}) && __dv_{varName} is bool __bool_{varName} ? __bool_{varName} : default",
-            "double" => $"SettingRegistry.DefaultValues.TryGetValue(\"{keyWithType}\", out var __dv_{varName}) && __dv_{varName} is double __double_{varName} ? __double_{varName} : default",
-            _ => $"SettingRegistry.DefaultValues.TryGetValue(\"{keyWithType}\", out var __dv_{varName}) ? __dv_{varName} as {dataType} : default"
+            "string" =>
+                $"SettingRegistry.DefaultValues.TryGetValue(\"{keyWithType}\", out var __dv_{varName}) ? __dv_{varName} as string : default",
+            "int" =>
+                $"SettingRegistry.DefaultValues.TryGetValue(\"{keyWithType}\", out var __dv_{varName}) && __dv_{varName} is int __int_{varName} ? __int_{varName} : default",
+            "bool" =>
+                $"SettingRegistry.DefaultValues.TryGetValue(\"{keyWithType}\", out var __dv_{varName}) && __dv_{varName} is bool __bool_{varName} ? __bool_{varName} : default",
+            "double" =>
+                $"SettingRegistry.DefaultValues.TryGetValue(\"{keyWithType}\", out var __dv_{varName}) && __dv_{varName} is double __double_{varName} ? __double_{varName} : default",
+            _ =>
+                $"SettingRegistry.DefaultValues.TryGetValue(\"{keyWithType}\", out var __dv_{varName}) ? __dv_{varName} as {dataType} : default"
         };
     }
 

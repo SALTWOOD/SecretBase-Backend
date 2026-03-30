@@ -41,34 +41,30 @@ public readonly record struct SiteInitResponse(
 public class SettingsController(BaseServices deps) : BaseApiController(deps)
 {
     [HttpGet("seo")]
-    [ProducesResponseType<SeoMetaResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<SettingRegistry.Site.Seo.SeoSettings>(StatusCodes.Status200OK)]
     public async Task<ActionResult> GetSeo()
     {
         return Ok(await SettingRegistry.Site.Seo.General.GetValuesAsObjectAsync());
     }
 
     [HttpGet("home/background")]
-    [ProducesResponseType<HomeBackgroundResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<SettingRegistry.Site.Home.Background.HomeBackgroundSettings>(StatusCodes.Status200OK)]
     public async Task<ActionResult> GetHomeBackground()
     {
         return Ok(await SettingRegistry.Site.Home.Background.GetValuesAsObjectAsync());
     }
 
     [HttpGet("home/banner")]
-    [ProducesResponseType<HomeBannerResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<SettingRegistry.Site.Home.Banner.HomeBannerSettings>(StatusCodes.Status200OK)]
     public async Task<ActionResult> GetHomeBanner()
     {
         return Ok(await SettingRegistry.Site.Home.Banner.GetValuesAsObjectAsync());
     }
 
-    [HttpGet("init")]
-    [ProducesResponseType(typeof(SiteInitResponse), StatusCodes.Status200OK)]
-    public async Task<ActionResult<SiteInitResponse>> GetSiteInit()
+    [HttpGet("footer")]
+    [ProducesResponseType<SettingRegistry.Site.Footer.FooterSettings>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetFooter()
     {
-        return Ok(new SiteInitResponse(
-            await SettingRegistry.Site.Seo.GetValuesAsync(),
-            await SettingRegistry.Site.Home.GetValuesAsync(),
-            await SettingRegistry.Site.User.Registration.Enabled
-        ));
+        return Ok(await SettingRegistry.Site.Footer.GetValuesAsObjectAsync());
     }
 }
