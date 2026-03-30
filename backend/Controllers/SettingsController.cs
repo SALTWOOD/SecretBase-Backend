@@ -40,8 +40,8 @@ public readonly record struct SiteInitResponse(
 [Route("settings")]
 public class SettingsController(BaseServices deps) : BaseApiController(deps)
 {
-    [HttpGet("seo")]
-    [ProducesResponseType<SettingRegistry.Site.Seo.SeoSettings>(StatusCodes.Status200OK)]
+    [HttpGet("seo/general")]
+    [ProducesResponseType<SettingRegistry.Site.Seo.General.SeoGeneralSettings>(StatusCodes.Status200OK)]
     public async Task<ActionResult> GetSeo()
     {
         return Ok(await SettingRegistry.Site.Seo.General.GetValuesAsObjectAsync());
