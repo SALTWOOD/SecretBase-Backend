@@ -17,15 +17,15 @@ namespace backend.Controllers;
 [ApiController]
 [Route("shortcodes")]
 [Produces(MediaTypeNames.Application.Json)]
-public class ShortcodeController : BaseApiController
+public class ShortcodesController : BaseApiController
 {
     private readonly ShortcodeService _shortcodeService;
-    private readonly ILogger<ShortcodeController> _logger;
+    private readonly ILogger<ShortcodesController> _logger;
 
-    public ShortcodeController(
+    public ShortcodesController(
         BaseServices deps,
         ShortcodeService shortcodeService,
-        ILogger<ShortcodeController> logger) : base(deps)
+        ILogger<ShortcodesController> logger) : base(deps)
     {
         _shortcodeService = shortcodeService;
         _logger = logger;
