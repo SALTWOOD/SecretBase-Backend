@@ -13,6 +13,7 @@ namespace backend.Controllers;
 [Produces(MediaTypeNames.Application.Json)]
 public class StorageController(BaseServices deps, IAmazonS3 s3Client) : BaseApiController(deps)
 {
+    [HttpGet("direct")]
     [ProducesResponseType<UrlResponse>(StatusCodes.Status200OK)]
     public IActionResult GetDirectLink([FromQuery] string s3Url)
     {
