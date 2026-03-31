@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Net.Mime;
 using Amazon.S3;
 using Amazon.S3.Util;
 using backend.Controllers.Admin;
@@ -7,9 +8,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace backend.Controllers;
 
+[ApiController]
 [Route("storage")]
+[Produces(MediaTypeNames.Application.Json)]
 public class StorageController(BaseServices deps, IAmazonS3 s3Client) : BaseApiController(deps)
 {
+    [ProducesResponseType<UrlResponse>(StatusCodes.Status200OK)]
     public IActionResult GetDirectLink([FromQuery] string s3Url)
     {
         var uri = new AmazonS3Uri(s3Url);
