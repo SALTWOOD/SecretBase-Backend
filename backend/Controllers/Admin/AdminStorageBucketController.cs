@@ -197,10 +197,7 @@ public class AdminStorageBucketController : BaseApiController
                 .Quality(80)
                 .Format(ImageFormat.WebP)
         );
-        return Ok(new UrlResponse
-        {
-            Url = url
-        });
+        return Ok(new UrlResponse(url));
     }
 
     /// <summary>
@@ -500,6 +497,11 @@ public readonly record struct BucketStatusResponse
 public readonly record struct UrlResponse
 {
     public string Url { get; init; }
+
+    public UrlResponse(string url)
+    {
+        Url = url;
+    }
 }
 
 #endregion
