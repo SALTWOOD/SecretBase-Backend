@@ -228,6 +228,90 @@ public class AdminStickerSetController : BaseApiController
         return Ok(results);
     }
 
+    [HttpPut("{id:int}/stickers/{stickerId:int}")]
+    [ProducesResponseType<UpdateStickerResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<MessageResponse>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpdateSticker(int id, int stickerId, [FromBody] UpdateStickerRequest request)
+    {
+        if (request.Name == null && request.ContentType == null)
+            return BadRequest(new MessageResponse("At least one field is required."));
+
+        var sticker = await _db.Stickers
+            .FirstOrDefaultAsync(s => s.Id == stickerId && s.StickerSetId == id);
+        if (sticker == null) return NotFound(new MessageResponse("Sticker not found."));
+
+        if (request.Name != null)
+            sticker.Name = request.Name;
+
+        string? newKey = null;
+        string? presignedUrl = null;
+        DateTime? expiresAt = null;
+
+        if (request.ContentType != null)
+        {
+            var ext = GetExtensionFromContentType(request.ContentType);
+            newKey = $"stickers/{id}/{Guid.NewGuid():N}.{ext}";
+
+            // var oldKey = sticker.Url.StartsWith("s3://")
+            //     ? sticker.Url[$"s3://{BucketName}/".Length..]
+            //     : null;
+
+            try
+            {
+                var presignedRequest = new GetPreSignedUrlRequest
+                {
+                    BucketName = BucketName,
+                    Key = newKey,
+                    Verb = HttpVerb.PUT,
+                    Expires = DateTime.UtcNow.AddMinutes(15),
+                    ContentType = request.ContentType
+                };
+
+                presignedUrl = _s3Client.GetPreSignedURL(presignedRequest);
+                expiresAt = DateTime.UtcNow.AddMinutes(15);
+            }
+            catch (AmazonS3Exception ex)
+            {
+                _logger.LogError(ex, "Failed to generate presigned upload URL for sticker {StickerId}", stickerId);
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    new MessageResponse($"Failed to generate presigned URL: {ex.Message}"));
+            }
+
+            sticker.Url = $"s3://{BucketName}/{newKey}";
+
+            // if (oldKey != null)
+            // {
+            //     try
+            //     {
+            //         await _s3Client.DeleteObjectAsync(new DeleteObjectRequest
+            //         {
+            //             BucketName = BucketName,
+            //             Key = oldKey
+            //         });
+            //     }
+            //     catch (AmazonS3Exception ex)
+            //     {
+            //         _logger.LogError(ex, "Failed to delete old sticker file {Key}", oldKey);
+            //     }
+            // }
+        }
+
+        var stickerSet = await _db.StickerSets.FindAsync(id);
+        if (stickerSet != null) stickerSet.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+
+        return Ok(new UpdateStickerResponse
+        {
+            Id = sticker.Id,
+            Name = sticker.Name,
+            Key = newKey,
+            UploadUrl = presignedUrl,
+            ExpiresAt = expiresAt
+        });
+    }
+
     [HttpDelete("{id:int}/stickers/{stickerId:int}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status404NotFound)]

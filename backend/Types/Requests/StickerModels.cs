@@ -29,3 +29,11 @@ public class StickerUploadItem
 
     public string? ContentType { get; set; }
 }
+
+public class UpdateStickerRequest
+{
+    [MaxLength(100)]
+    public string? Name { get; set; }
+
+    public string? ContentType { get; set; }
+}

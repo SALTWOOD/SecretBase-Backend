@@ -36,3 +36,12 @@ public class UploadedStickerResponse
     public required string UploadUrl { get; set; }
     public DateTime ExpiresAt { get; set; }
 }
+
+public class UpdateStickerResponse
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+    public string? Key { get; set; }
+    public string? UploadUrl { get; set; }
+    public DateTime? ExpiresAt { get; set; }
+}
