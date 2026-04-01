@@ -27,3 +27,12 @@ public class StickerResponse
 public readonly record struct StickerImageUrlResponse(string Url);
 
 public readonly record struct PresignedStickerUrl(string Key, string Url, DateTime ExpiresAt);
+
+public class UploadedStickerResponse
+{
+    public required int Id { get; set; }
+    public required string Name { get; set; }
+    public required string Key { get; set; }
+    public required string UploadUrl { get; set; }
+    public DateTime ExpiresAt { get; set; }
+}

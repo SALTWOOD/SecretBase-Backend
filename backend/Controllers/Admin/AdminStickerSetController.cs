@@ -161,16 +161,19 @@ public class AdminStickerSetController : BaseApiController
         return NoContent();
     }
 
-    [HttpPost("{id:int}/stickers/presign")]
-    [ProducesResponseType<List<PresignedStickerUrl>>(StatusCodes.Status200OK)]
+    [HttpPost("{id:int}/stickers")]
+    [ProducesResponseType<List<UploadedStickerResponse>>(StatusCodes.Status200OK)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]
-    public IActionResult PresignUpload(int id, [FromBody] PresignStickerUploadRequest request)
+    public async Task<IActionResult> UploadStickers(int id, [FromBody] UploadStickersRequest request)
     {
+        var stickerSet = await _db.StickerSets.FindAsync(id);
+        if (stickerSet == null) return NotFound(new MessageResponse("Sticker set not found."));
+
         if (request.Items.Count == 0)
             return BadRequest(new MessageResponse("At least one item is required."));
 
-        var results = new List<PresignedStickerUrl>();
+        var results = new List<UploadedStickerResponse>();
 
         foreach (var item in request.Items)
         {
@@ -179,6 +182,7 @@ public class AdminStickerSetController : BaseApiController
                 : GetExtensionFromContentType(item.ContentType);
             var key = $"stickers/{id}/{Guid.NewGuid():N}.{ext}";
 
+            string presignedUrl;
             try
             {
                 var presignedRequest = new GetPreSignedUrlRequest
@@ -190,8 +194,7 @@ public class AdminStickerSetController : BaseApiController
                     ContentType = item.ContentType
                 };
 
-                var url = _s3Client.GetPreSignedURL(presignedRequest);
-                results.Add(new PresignedStickerUrl(key, url, DateTime.UtcNow.AddMinutes(15)));
+                presignedUrl = _s3Client.GetPreSignedURL(presignedRequest);
             }
             catch (AmazonS3Exception ex)
             {
@@ -199,49 +202,8 @@ public class AdminStickerSetController : BaseApiController
                 return StatusCode(StatusCodes.Status500InternalServerError,
                     new MessageResponse($"Failed to generate presigned URL: {ex.Message}"));
             }
-        }
 
-        return Ok(results);
-    }
-
-    [HttpPost("{id:int}/stickers")]
-    [ProducesResponseType<List<StickerResponse>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<MessageResponse>(StatusCodes.Status404NotFound)]
-    [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> ConfirmUpload(int id, [FromBody] ConfirmStickerUploadRequest request)
-    {
-        var stickerSet = await _db.StickerSets.FindAsync(id);
-        if (stickerSet == null) return NotFound(new MessageResponse("Sticker set not found."));
-
-        if (request.Items.Count == 0)
-            return BadRequest(new MessageResponse("At least one item is required."));
-
-        var stickers = new List<Sticker>();
-
-        foreach (var item in request.Items)
-        {
-            try
-            {
-                var metadataRequest = new GetObjectMetadataRequest
-                {
-                    BucketName = BucketName,
-                    Key = item.Key
-                };
-
-                await _s3Client.GetObjectMetadataAsync(metadataRequest);
-            }
-            catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-                return BadRequest(new MessageResponse($"Sticker file '{item.Key}' not found in S3."));
-            }
-            catch (AmazonS3Exception ex)
-            {
-                _logger.LogError(ex, "Failed to validate sticker file {Key}", item.Key);
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new MessageResponse($"Failed to validate sticker file: {ex.Message}"));
-            }
-
-            var s3Uri = $"s3://{BucketName}/{item.Key}";
+            var s3Uri = $"s3://{BucketName}/{key}";
             var sticker = new Sticker
             {
                 Name = item.Name,
@@ -250,19 +212,20 @@ public class AdminStickerSetController : BaseApiController
             };
 
             _db.Stickers.Add(sticker);
-            stickers.Add(sticker);
+            results.Add(new UploadedStickerResponse
+            {
+                Id = sticker.Id,
+                Name = sticker.Name,
+                Key = key,
+                UploadUrl = presignedUrl,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(15)
+            });
         }
 
         stickerSet.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        var response = stickers.Select(s => new StickerResponse
-        {
-            Id = s.Id,
-            Name = s.Name
-        }).ToList();
-
-        return Ok(response);
+        return Ok(results);
     }
 
     [HttpDelete("{id:int}/stickers/{stickerId:int}")]
