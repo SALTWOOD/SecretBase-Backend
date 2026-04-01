@@ -17,6 +17,8 @@ public class AppDbContext : DbContext
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<Shortcode> Shortcodes => Set<Shortcode>();
     public DbSet<Entities.FileShare> FileShares => Set<Entities.FileShare>();
+    public DbSet<StickerSet> StickerSets => Set<StickerSet>();
+    public DbSet<Sticker> Stickers => Set<Sticker>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
