@@ -14,7 +14,16 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
 
         builder.Property(x => x.Content).HasMaxLength(2000).IsRequired();
         builder.Property(x => x.ArticleId).IsRequired();
-        builder.Property(x => x.AuthorId).IsRequired();
+
+        builder.Property(x => x.AuthorId).IsRequired(false);
+
+        builder.Property(x => x.ReviewStatus)
+            .HasConversion<int>();
+
+        builder.OwnsOne(x => x.Metadata, owned =>
+        {
+            owned.ToJson();
+        });
 
         builder.Property(x => x.CreatedAt)
             .HasColumnType("timestamptz")
@@ -32,7 +41,7 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
         builder.HasOne(x => x.Author)
             .WithMany()
             .HasForeignKey(x => x.AuthorId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasOne(x => x.ParentComment)
             .WithMany(x => x.Replies)
@@ -44,5 +53,6 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
         builder.HasIndex(x => x.ParentCommentId);
         builder.HasIndex(x => x.CreatedAt);
         builder.HasIndex(x => x.IsDeleted);
+        builder.HasIndex(x => x.ReviewStatus);
     }
 }

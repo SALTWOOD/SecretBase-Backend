@@ -3,6 +3,21 @@ using System.Text.Json.Serialization;
 
 namespace backend.Database.Entities;
 
+public enum ReviewStatus
+{
+    Pending = 0,
+    Approved = 1,
+    Rejected = 2
+}
+
+public class CommentMetadata
+{
+    public string? GuestNickname { get; set; }
+    public string? GuestEmail { get; set; }
+    public string? GuestWebsite { get; set; }
+    public string? IpAddress { get; set; }
+}
+
 public class Comment
 {
     public int Id { get; set; }
@@ -13,7 +28,7 @@ public class Comment
 
     [JsonIgnore] public Article? Article { get; set; }
 
-    public int AuthorId { get; set; }
+    public int? AuthorId { get; set; }
 
     [JsonIgnore] public User? Author { get; set; }
 
@@ -28,4 +43,8 @@ public class Comment
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     public bool IsDeleted { get; set; } = false;
+
+    public ReviewStatus ReviewStatus { get; set; } = ReviewStatus.Pending;
+
+    public CommentMetadata Metadata { get; set; } = new();
 }
