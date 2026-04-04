@@ -28,7 +28,8 @@ public static partial class SettingRegistry
         "site.home.banner.content:string",
         "site.home.banner.display_mode:string",
         "site.footer.beian.icp:string",
-        "site.footer.beian.police:string"
+        "site.footer.beian.police:string",
+        "site.general.info.site_created_at:datetime",
     ];
 
     public static readonly Dictionary<string, object?> DefaultValues = new()
@@ -54,7 +55,8 @@ public static partial class SettingRegistry
         ["site.home.banner.content:string"] = "Welcome to My Site",
         ["site.home.banner.display_mode:string"] = "full",
         ["site.footer.beian.icp:string"] = "",
-        ["site.footer.beian.police:string"] = ""
+        ["site.footer.beian.police:string"] = "",
+        ["site.general.info.site_created_at:datetime"] = new DateTime(),
     };
 
     /// <summary>

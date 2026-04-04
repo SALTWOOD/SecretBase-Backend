@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using backend.Database;
 using backend.Database.Entities;
@@ -107,10 +108,18 @@ public class AdminSettingsController(BaseServices deps) : BaseApiController(deps
         if (SettingNode.GlobalProvider == null)
             return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Setting provider not available" });
 
+        var type = SettingRegistry.ExtractType(keyWithType);
         var value = body.Value;
         object? result = value.ValueKind switch
         {
-            JsonValueKind.String => value.GetString(),
+            JsonValueKind.String => type switch
+            {
+                "datetime" => DateTime.Parse(value.GetString()!, CultureInfo.InvariantCulture,
+                    DateTimeStyles.RoundtripKind),
+                "date" => DateOnly.Parse(value.GetString()!, CultureInfo.InvariantCulture),
+                "time" => TimeOnly.Parse(value.GetString()!, CultureInfo.InvariantCulture),
+                _ => value.GetString()
+            },
             JsonValueKind.Number => value switch 
             {
                 _ when value.TryGetInt32(out int i) => i,
@@ -120,7 +129,7 @@ public class AdminSettingsController(BaseServices deps) : BaseApiController(deps
             JsonValueKind.True => true,
             JsonValueKind.False => false,
             JsonValueKind.Null => null,
-            JsonValueKind.Object or JsonValueKind.Array => throw new NotImplementedException(), 
+            JsonValueKind.Object or JsonValueKind.Array => JsonSerializer.Deserialize<JsonElement>(value.GetRawText()),
             _ => null
         };
         

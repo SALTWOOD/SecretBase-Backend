@@ -9,7 +9,10 @@ public enum SettingType
     Number = 2,
     Boolean = 3,
     Json = 4,
-    Null = 5
+    Null = 5,
+    DateTime = 6,
+    Date = 7,
+    Time = 8
 }
 
 public class Setting
@@ -46,6 +49,13 @@ public class Setting
                 var result = Value.ToLower() == "true" || Value.ToLower() == "t" ||
                              (double.TryParse(Value, out var v) && v != 0);
                 return (T)Convert.ChangeType(result, TypeCode.Boolean);
+            case SettingType.DateTime:
+                return (T)(object)System.DateTime.Parse(Value, System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.RoundtripKind);
+            case SettingType.Date:
+                return (T)(object)DateOnly.Parse(Value, System.Globalization.CultureInfo.InvariantCulture);
+            case SettingType.Time:
+                return (T)(object)TimeOnly.Parse(Value, System.Globalization.CultureInfo.InvariantCulture);
             case SettingType.Json:
                 return JsonSerializer.Deserialize<T>(Value);
             case SettingType.Null:
@@ -91,6 +101,18 @@ public class Setting
             case bool b:
                 Value = b ? "true" : "false";
                 Type = SettingType.Boolean;
+                break;
+            case System.DateTime dt:
+                Value = dt.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
+                Type = SettingType.DateTime;
+                break;
+            case DateOnly d:
+                Value = d.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+                Type = SettingType.Date;
+                break;
+            case TimeOnly t:
+                Value = t.ToString("HH:mm:ss.ffffff", System.Globalization.CultureInfo.InvariantCulture);
+                Type = SettingType.Time;
                 break;
             default:
                 Value = JsonSerializer.Serialize(val);
