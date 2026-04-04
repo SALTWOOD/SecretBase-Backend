@@ -39,6 +39,7 @@ builder.Services.AddCors(options =>
             policy.WithOrigins(allowedOrigins)
                 .AllowAnyMethod()
                 .AllowAnyHeader()
+                .WithExposedHeaders("x-total-count")
                 .AllowCredentials();
     });
 });

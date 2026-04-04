@@ -15,14 +15,14 @@ public class ArticleController(BaseServices deps, IImgproxyClient imgproxyClient
 {
     [HttpGet]
     [ProducesResponseType(typeof(List<ArticleResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetArticles([FromQuery] int page = 1, [FromQuery] int pageSize = 20,
-        [FromQuery] bool? published = null)
+    public async Task<IActionResult> GetArticles([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
         var query = _db.Articles.AsQueryable();
 
-        if (published.HasValue)
-            query = query.Where(a =>
-                a.IsPublished == published.Value || (CurrentUserId.HasValue && a.AuthorId == CurrentUserId));
+        query = query.Where(a =>
+            a.IsPublished || (CurrentUserId.HasValue && a.AuthorId == CurrentUserId));
+
+        var totalCount = await query.CountAsync();
 
         var articles = await query
             .OrderByDescending(a => a.CreatedAt)
@@ -41,6 +41,8 @@ public class ArticleController(BaseServices deps, IImgproxyClient imgproxyClient
                 CommentCount = a.Comments.Count
             })
             .ToListAsync();
+
+        Response.Headers.Append("X-Total-Count", totalCount.ToString());
 
         return Ok(articles);
     }
