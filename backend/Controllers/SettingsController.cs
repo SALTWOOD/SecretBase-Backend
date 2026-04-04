@@ -67,4 +67,11 @@ public class SettingsController(BaseServices deps) : BaseApiController(deps)
     {
         return Ok(await SettingRegistry.Site.Footer.GetValuesAsObjectAsync());
     }
+
+    [HttpGet("general/info")]
+    [ProducesResponseType<SettingRegistry.Site.General.Info.GeneralInfoSettings>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetGeneralInfo()
+    {
+        return Ok(await SettingRegistry.Site.General.Info.GetValuesAsObjectAsync());
+    }
 }
