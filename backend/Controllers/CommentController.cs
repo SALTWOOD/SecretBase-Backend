@@ -14,7 +14,7 @@ public class CommentController(BaseServices deps) : BaseApiController(deps)
     [HttpGet("article/{articleId}")]
     [ProducesResponseType(typeof(List<CommentResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCommentsByArticle(int articleId, [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20)
+        [FromQuery] int pageSize = 10)
     {
         var article = await _db.Articles.FindAsync(articleId);
         if (article == null) return NotFound(new MessageResponse("Article not found."));
@@ -48,7 +48,7 @@ public class CommentController(BaseServices deps) : BaseApiController(deps)
     [HttpGet("{commentId}/replies")]
     [ProducesResponseType(typeof(List<CommentResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetReplies(int commentId, [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20)
+        [FromQuery] int pageSize = 10)
     {
         var parentComment = await _db.Comments.FindAsync(commentId);
         if (parentComment == null) return NotFound(new MessageResponse("Comment not found."));

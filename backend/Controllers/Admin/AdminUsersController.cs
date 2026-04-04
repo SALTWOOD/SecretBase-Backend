@@ -20,7 +20,7 @@ public class UserAdminController(BaseServices deps) : BaseApiController(deps)
 {
     [HttpGet]
     [ProducesResponseType(typeof(List<User>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<User>>> GetUsers([FromQuery] int page = 1, [FromQuery] int size = 20)
+    public async Task<ActionResult<List<User>>> GetUsers([FromQuery] int page = 1, [FromQuery] int size = 10)
     {
         page = Math.Max(1, page);
         size = Math.Clamp(size, 1, 100);

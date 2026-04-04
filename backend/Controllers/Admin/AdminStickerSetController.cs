@@ -40,7 +40,7 @@ public class AdminStickerSetController : BaseApiController
 
     [HttpGet]
     [ProducesResponseType<List<StickerSetResponse>>(StatusCodes.Status200OK)]
-    public async Task<IActionResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    public async Task<IActionResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
         var query = _db.StickerSets.AsQueryable();
 

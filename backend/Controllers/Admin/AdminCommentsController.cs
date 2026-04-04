@@ -34,7 +34,7 @@ public class AdminCommentsController(BaseServices deps) : BaseApiController(deps
     [ProducesResponseType(typeof(List<AdminCommentResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllComments(
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int pageSize = 10,
         [FromQuery] ReviewStatus? status = null)
     {
         page = Math.Max(1, page);
@@ -80,7 +80,7 @@ public class AdminCommentsController(BaseServices deps) : BaseApiController(deps
     [ProducesResponseType(typeof(List<AdminCommentResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPendingComments(
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20)
+        [FromQuery] int pageSize = 10)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);

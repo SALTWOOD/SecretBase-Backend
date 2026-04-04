@@ -70,7 +70,7 @@ public class AdminFileShareController : BaseApiController
     [ProducesResponseType<MessageResponse>(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> List(
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
+        [FromQuery] int pageSize = 10,
         [FromQuery] string? bucket = null,
         [FromQuery] bool? isEnabled = null)
     {
