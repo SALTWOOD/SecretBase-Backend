@@ -61,6 +61,20 @@ public class SettingsController(BaseServices deps) : BaseApiController(deps)
         return Ok(await SettingRegistry.Site.Home.Banner.GetValuesAsObjectAsync());
     }
 
+    [HttpGet("home/sidebar/left")]
+    public async Task<ActionResult> GetSidebarLeft()
+    {
+        var val = await SettingRegistry.Site.Home.Sidebar.Left.GetValueAsync();
+        return Ok(val);
+    }
+
+    [HttpGet("home/sidebar/right")]
+    public async Task<ActionResult> GetSidebarRight()
+    {
+        var val = await SettingRegistry.Site.Home.Sidebar.Right.GetValueAsync();
+        return Ok(val);
+    }
+
     [HttpGet("footer")]
     [ProducesResponseType<SettingRegistry.Site.Footer.FooterSettings>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFooter()

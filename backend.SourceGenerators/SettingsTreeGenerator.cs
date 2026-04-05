@@ -223,7 +223,7 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
     /// </summary>
     private static bool IsContainerType(string dataType)
     {
-        return dataType.StartsWith("list[") || dataType.StartsWith("dict[");
+        return dataType.StartsWith("list[") || dataType.StartsWith("dict[") || dataType == "json";
     }
 
     private static string ToCSharpType(string dataType)
@@ -246,6 +246,7 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
             "datetime" => "DateTime",
             "date" => "DateOnly",
             "time" => "TimeOnly",
+            "json" => "JsonElement",
             _ => dataType
         };
     }
@@ -283,6 +284,8 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
                 $"SettingRegistry.DefaultValues.TryGetValue(\"{keyWithType}\", out var __dv_{varName}) && __dv_{varName} is TimeOnly __time_{varName} ? __time_{varName} : default",
             var dt when dt.StartsWith("list[") || dt.StartsWith("dict[") =>
                 $"SettingRegistry.DefaultValues.TryGetValue(\"{keyWithType}\", out var __dv_{varName}) ? __dv_{varName} as {csharpType} : default",
+            "json" =>
+                $"SettingRegistry.DefaultValues.TryGetValue(\"{keyWithType}\", out var __dv_{varName}) && __dv_{varName} is JsonElement __je_{varName} ? __je_{varName} : default",
             _ =>
                 $"SettingRegistry.DefaultValues.TryGetValue(\"{keyWithType}\", out var __dv_{varName}) ? __dv_{varName} as {csharpType} : default"
         };
