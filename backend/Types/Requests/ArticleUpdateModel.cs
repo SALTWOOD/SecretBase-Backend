@@ -11,4 +11,6 @@ public class ArticleUpdateModel
     [MaxLength(500)] public string? CoverUrl { get; set; }
 
     public bool IsPublished { get; set; }
+
+    [MaxLength(200)] public string? Slug { get; set; }
 }

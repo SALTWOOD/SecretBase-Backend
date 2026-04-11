@@ -24,4 +24,8 @@ public class Article
     public bool IsPublished { get; set; }
 
     public string? CoverUrl { get; set; }
+
+    public ArticleType Type { get; set; } = ArticleType.Post;
+
+    [MaxLength(200)] public string? Slug { get; set; }
 }

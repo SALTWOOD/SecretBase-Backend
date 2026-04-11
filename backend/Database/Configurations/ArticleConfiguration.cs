@@ -35,8 +35,13 @@ public class ArticleConfiguration : IEntityTypeConfiguration<Article>
             .HasForeignKey(x => x.ArticleId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.Property(x => x.Type).HasDefaultValue(ArticleType.Post);
+        builder.Property(x => x.Slug).HasMaxLength(200);
+
         builder.HasIndex(x => x.AuthorId);
         builder.HasIndex(x => x.CreatedAt);
         builder.HasIndex(x => x.IsPublished);
+        builder.HasIndex(x => x.Type);
+        builder.HasIndex(x => x.Slug).IsUnique().HasFilter("\"Slug\" IS NOT NULL");
     }
 }

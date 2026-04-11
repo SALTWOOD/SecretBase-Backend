@@ -1,3 +1,5 @@
+using backend.Database.Entities;
+
 namespace backend.Types.Responses;
 
 public class ArticleResponse
@@ -12,4 +14,6 @@ public class ArticleResponse
     public bool IsPublished { get; set; }
     public string? CoverUrl { get; set; }
     public int CommentCount { get; set; }
+    public ArticleType Type { get; set; }
+    public string? Slug { get; set; }
 }

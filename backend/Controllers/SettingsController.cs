@@ -75,6 +75,12 @@ public class SettingsController(BaseServices deps) : BaseApiController(deps)
         return Ok(val);
     }
 
+    [HttpGet("home/header")]
+    public async Task<ActionResult> GetHomeHeader()
+    {
+        return Ok(await SettingRegistry.Site.Home.Header.GetValuesAsObjectAsync());
+    }
+
     [HttpGet("footer")]
     [ProducesResponseType<SettingRegistry.Site.Footer.FooterSettings>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetFooter()

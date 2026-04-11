@@ -3,30 +3,29 @@ using backend.Services;
 using backend.Types.Request;
 using backend.Types.Response;
 using backend.Types.Responses;
-using ImageProxyClient;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Controllers;
 
-[Route("articles")]
-public class ArticleController(BaseServices deps, IImgproxyClient imgproxyClient) : BaseApiController(deps)
+[Route("pages")]
+public class PageController(BaseServices deps) : BaseApiController(deps)
 {
     [HttpGet]
     [ProducesResponseType(typeof(List<ArticleResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetArticles([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    public async Task<IActionResult> GetPages([FromQuery] int page = 1, [FromQuery] int pageSize = 50)
     {
         var query = _db.Articles.AsQueryable();
 
-        query = query.Where(a => a.Type == ArticleType.Post);
+        query = query.Where(a => a.Type == ArticleType.Page);
 
         query = query.Where(a =>
             a.IsPublished || (CurrentUserId.HasValue && a.AuthorId == CurrentUserId));
 
         var totalCount = await query.CountAsync();
 
-        var articles = await query
+        var pages = await query
             .OrderByDescending(a => a.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
@@ -48,16 +47,16 @@ public class ArticleController(BaseServices deps, IImgproxyClient imgproxyClient
 
         Response.Headers.Append("X-Total-Count", totalCount.ToString());
 
-        return Ok(articles);
+        return Ok(pages);
     }
 
     [HttpGet("slug/{slug}")]
     [ProducesResponseType(typeof(ArticleResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetArticleBySlug(string slug)
+    public async Task<IActionResult> GetPageBySlug(string slug)
     {
-        var article = await _db.Articles
-            .Where(a => a.Slug == slug && a.Type == ArticleType.Post)
+        var page = await _db.Articles
+            .Where(a => a.Slug == slug && a.Type == ArticleType.Page && a.IsPublished)
             .Select(a => new ArticleResponse
             {
                 Id = a.Id,
@@ -75,18 +74,18 @@ public class ArticleController(BaseServices deps, IImgproxyClient imgproxyClient
             })
             .FirstOrDefaultAsync();
 
-        if (article == null) return NotFound(new MessageResponse("Article not found."));
+        if (page == null) return NotFound(new MessageResponse("Page not found."));
 
-        return Ok(article);
+        return Ok(page);
     }
 
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ArticleResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetArticle(int id)
+    public async Task<IActionResult> GetPage(int id)
     {
-        var article = await _db.Articles
-            .Where(a => a.Id == id && a.Type == ArticleType.Post)
+        var page = await _db.Articles
+            .Where(a => a.Id == id && a.Type == ArticleType.Page)
             .Select(a => new ArticleResponse
             {
                 Id = a.Id,
@@ -104,21 +103,23 @@ public class ArticleController(BaseServices deps, IImgproxyClient imgproxyClient
             })
             .FirstOrDefaultAsync();
 
-        if (article == null) return NotFound(new MessageResponse("Article not found."));
+        if (page == null) return NotFound(new MessageResponse("Page not found."));
 
-        return Ok(article);
+        return Ok(page);
     }
 
     [HttpPost]
     [Authorize]
     [ProducesResponseType(typeof(ArticleResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CreateArticle([FromBody] ArticleCreateModel model)
+    public async Task<IActionResult> CreatePage([FromBody] PageCreateModel model)
     {
         if (CurrentUserId == null) return BadRequest(new MessageResponse("User not authenticated."));
 
-        if (!string.IsNullOrWhiteSpace(model.Slug) &&
-            await _db.Articles.AnyAsync(a => a.Slug == model.Slug))
+        if (string.IsNullOrWhiteSpace(model.Slug))
+            return BadRequest(new MessageResponse("Slug is required for pages."));
+
+        if (await _db.Articles.AnyAsync(a => a.Slug == model.Slug))
             return BadRequest(new MessageResponse("Slug already exists."));
 
         var article = new Article
@@ -129,7 +130,7 @@ public class ArticleController(BaseServices deps, IImgproxyClient imgproxyClient
             IsPublished = model.IsPublished,
             CoverUrl = model.CoverUrl,
             Slug = model.Slug,
-            Type = ArticleType.Post,
+            Type = ArticleType.Page,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -153,7 +154,7 @@ public class ArticleController(BaseServices deps, IImgproxyClient imgproxyClient
             Slug = article.Slug
         };
 
-        return CreatedAtAction(nameof(GetArticle), new { id = article.Id }, response);
+        return CreatedAtAction(nameof(GetPage), new { id = article.Id }, response);
     }
 
     [HttpPut("{id}")]
@@ -162,42 +163,44 @@ public class ArticleController(BaseServices deps, IImgproxyClient imgproxyClient
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateArticle(int id, [FromBody] ArticleUpdateModel model)
+    public async Task<IActionResult> UpdatePage(int id, [FromBody] PageUpdateModel model)
     {
-        var article = await _db.Articles.FindAsync(id);
-        if (article == null) return NotFound(new MessageResponse("Article not found."));
+        var page = await _db.Articles.FindAsync(id);
+        if (page == null) return NotFound(new MessageResponse("Page not found."));
+
+        if (page.Type != ArticleType.Page) return NotFound(new MessageResponse("Page not found."));
 
         if (CurrentUserId == null) return BadRequest(new MessageResponse("User not authenticated."));
 
-        if (article.AuthorId != CurrentUserId.Value) return Forbid();
+        if (page.AuthorId != CurrentUserId.Value) return Forbid();
 
         if (!string.IsNullOrWhiteSpace(model.Slug) &&
             await _db.Articles.AnyAsync(a => a.Slug == model.Slug && a.Id != id))
             return BadRequest(new MessageResponse("Slug already exists."));
 
-        article.Title = model.Title;
-        article.Content = model.Content;
-        article.IsPublished = model.IsPublished;
-        article.CoverUrl = model.CoverUrl;
-        article.Slug = model.Slug;
-        article.UpdatedAt = DateTime.UtcNow;
+        page.Title = model.Title;
+        page.Content = model.Content;
+        page.IsPublished = model.IsPublished;
+        page.CoverUrl = model.CoverUrl;
+        page.Slug = model.Slug;
+        page.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
 
         var response = new ArticleResponse
         {
-            Id = article.Id,
-            Title = article.Title,
-            Content = article.Content,
-            AuthorId = article.AuthorId,
-            AuthorUsername = (await _db.Users.FindAsync(article.AuthorId))?.Username,
-            CreatedAt = article.CreatedAt,
-            UpdatedAt = article.UpdatedAt,
-            IsPublished = article.IsPublished,
-            CoverUrl = article.CoverUrl,
-            CommentCount = article.Comments.Count,
-            Type = article.Type,
-            Slug = article.Slug
+            Id = page.Id,
+            Title = page.Title,
+            Content = page.Content,
+            AuthorId = page.AuthorId,
+            AuthorUsername = (await _db.Users.FindAsync(page.AuthorId))?.Username,
+            CreatedAt = page.CreatedAt,
+            UpdatedAt = page.UpdatedAt,
+            IsPublished = page.IsPublished,
+            CoverUrl = page.CoverUrl,
+            CommentCount = page.Comments.Count,
+            Type = page.Type,
+            Slug = page.Slug
         };
 
         return Ok(response);
@@ -208,39 +211,20 @@ public class ArticleController(BaseServices deps, IImgproxyClient imgproxyClient
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteArticle(int id)
+    public async Task<IActionResult> DeletePage(int id)
     {
-        var article = await _db.Articles.FindAsync(id);
-        if (article == null) return NotFound(new MessageResponse("Article not found."));
+        var page = await _db.Articles.FindAsync(id);
+        if (page == null) return NotFound(new MessageResponse("Page not found."));
+
+        if (page.Type != ArticleType.Page) return NotFound(new MessageResponse("Page not found."));
 
         if (CurrentUserId == null) return BadRequest(new MessageResponse("User not authenticated."));
 
-        if (article.AuthorId != CurrentUserId.Value) return Forbid();
+        if (page.AuthorId != CurrentUserId.Value) return Forbid();
 
-        _db.Articles.Remove(article);
+        _db.Articles.Remove(page);
         await _db.SaveChangesAsync();
 
-        return Ok(new MessageResponse("Article deleted successfully."));
-    }
-
-    [HttpGet("{id}/cover")]
-    public async Task<IActionResult> GetCover(int id)
-    {
-        var article = await _db.Articles.FindAsync(id);
-        var url = article?.CoverUrl;
-        if (url == null) return NotFound(new MessageResponse("Article not found or missing cover image."));
-        Uri uri = new Uri(url);
-        switch (uri.Scheme.ToLower())
-        {
-            case "s3":
-                var image = imgproxyClient.BuildUrl(url, options =>
-                    options.Resize(1200, 675, ResizeMode.Fit)
-                        .Format(ImageFormat.WebP)
-                        .Expires(DateTime.UtcNow.AddHours(1))
-                );
-                return Redirect(image);
-            default:
-                return Redirect(url);
-        }
+        return Ok(new MessageResponse("Page deleted successfully."));
     }
 }

@@ -37,4 +37,8 @@
         <ProjectReference Include="..\ImageProxyClient\src\ImageProxyClient\ImageProxyClient.csproj"/>
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Remove="Migrations\20260405120000_AddArticleTypeAndSlug.cs" />
+    </ItemGroup>
+
 </Project>
