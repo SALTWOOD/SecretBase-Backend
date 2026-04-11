@@ -41,13 +41,13 @@ public class StickerSetController(BaseServices deps, IImgproxyClient imgproxyCli
     }
 
     [HttpGet("{id:int}")]
-    [ProducesResponseType<StickerSetDetailResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<StickerSetInfoResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Get(int id)
     {
         var stickerSet = await _db.StickerSets
             .Where(s => s.Id == id)
-            .Select(s => new StickerSetDetailResponse
+            .Select(s => new StickerSetInfoResponse
             {
                 Id = s.Id,
                 Name = s.Name,
@@ -66,22 +66,27 @@ public class StickerSetController(BaseServices deps, IImgproxyClient imgproxyCli
         return Ok(stickerSet);
     }
 
-    [HttpGet("{id:int}/images")]
-    [ProducesResponseType<StickerImageUrlResponse[]>(StatusCodes.Status200OK)]
+    [HttpGet("{id:int}/details")]
+    [ProducesResponseType<StickerUrlResponse[]>(StatusCodes.Status200OK)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Images(int id)
+    public async Task<IActionResult> GetDetails(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 18)
     {
-        var stickerSet = await _db.StickerSets
-            .Where(s => s.Id == id)
-            .Select(s => s.Stickers)
-            .FirstAsync();
+        var stickers = _db.Stickers.Where(s => s.StickerSetId == id);
+        var totalCount = await stickers.CountAsync();
 
-        var urls = stickerSet.Select(s => {
+        var items = await stickers
+            .OrderBy(s => s.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        var urls = items.Select(s =>
+        {
             var url = s.Url;
             Uri uri = new Uri(url);
 
             if (uri.Scheme.ToLower() != "s3")
-                return new StickerImageUrlResponse(url);
+                return new StickerUrlResponse(s.Id, s.Name, url);
 
             string image = imgproxyClient.BuildUrl(url, options =>
                 options.Resize(256, 256, ResizeMode.Fit)
@@ -89,14 +94,15 @@ public class StickerSetController(BaseServices deps, IImgproxyClient imgproxyCli
                     .Format(ImageFormat.WebP)
                     .Expires(DateTime.UtcNow.AddHours(1))
             );
-            return new StickerImageUrlResponse(image);
+            return new StickerUrlResponse(s.Id, s.Name, image);
         });
 
+        Response.Headers.Append("X-Total-Count", totalCount.ToString());
         return Ok(urls);
     }
 
     [HttpGet("stickers/{stickerId:int}/image")]
-    [ProducesResponseType<StickerImageUrlResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<StickerUrlResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetStickerImage(int stickerId)
     {
@@ -107,7 +113,7 @@ public class StickerSetController(BaseServices deps, IImgproxyClient imgproxyCli
         Uri uri = new Uri(url);
 
         if (uri.Scheme.ToLower() != "s3")
-            return Ok(new StickerImageUrlResponse(url));
+            return Ok(new StickerUrlResponse(sticker.Id, sticker.Name, url));
 
         var imageUrl = imgproxyClient.BuildUrl(url, options =>
             options.Resize(256, 256, ResizeMode.Fit)
@@ -116,6 +122,6 @@ public class StickerSetController(BaseServices deps, IImgproxyClient imgproxyCli
                 .Expires(DateTime.UtcNow.AddHours(1))
         );
 
-        return Ok(new StickerImageUrlResponse(imageUrl));
+        return Ok(new StickerUrlResponse(sticker.Id, sticker.Name, imageUrl));
     }
 }

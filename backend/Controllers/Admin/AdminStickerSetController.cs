@@ -66,13 +66,13 @@ public class AdminStickerSetController : BaseApiController
     }
 
     [HttpGet("{id:int}")]
-    [ProducesResponseType<StickerSetDetailResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<StickerSetInfoResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Get(int id)
     {
         var stickerSet = await _db.StickerSets
             .Where(s => s.Id == id)
-            .Select(s => new StickerSetDetailResponse
+            .Select(s => new StickerSetInfoResponse
             {
                 Id = s.Id,
                 Name = s.Name,

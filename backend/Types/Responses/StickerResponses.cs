@@ -9,7 +9,7 @@ public class StickerSetResponse
     public DateTime UpdatedAt { get; set; }
 }
 
-public class StickerSetDetailResponse
+public class StickerSetInfoResponse
 {
     public required int Id { get; set; }
     public required string Name { get; set; }
@@ -18,13 +18,16 @@ public class StickerSetDetailResponse
     public DateTime UpdatedAt { get; set; }
 }
 
-public class StickerResponse
-{
-    public required int Id { get; set; }
-    public required string Name { get; set; }
-}
+public readonly record struct StickerResponse(
+    int Id,
+    string Name
+);
 
-public readonly record struct StickerImageUrlResponse(string Url);
+public readonly record struct StickerUrlResponse(
+    int Id,
+    string Name,
+    string Url
+);
 
 public readonly record struct PresignedStickerUrl(string Key, string Url, DateTime ExpiresAt);
 
