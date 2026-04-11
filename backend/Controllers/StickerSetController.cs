@@ -66,6 +66,35 @@ public class StickerSetController(BaseServices deps, IImgproxyClient imgproxyCli
         return Ok(stickerSet);
     }
 
+    [HttpGet("{id:int}/images")]
+    [ProducesResponseType<StickerImageUrlResponse[]>(StatusCodes.Status200OK)]
+    [ProducesResponseType<MessageResponse>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Images(int id)
+    {
+        var stickerSet = await _db.StickerSets
+            .Where(s => s.Id == id)
+            .Select(s => s.Stickers)
+            .FirstAsync();
+
+        var urls = stickerSet.Select(s => {
+            var url = s.Url;
+            Uri uri = new Uri(url);
+
+            if (uri.Scheme.ToLower() != "s3")
+                return new StickerImageUrlResponse(url);
+
+            string image = imgproxyClient.BuildUrl(url, options =>
+                options.Resize(256, 256, ResizeMode.Fit)
+                    .Quality(80)
+                    .Format(ImageFormat.WebP)
+                    .Expires(DateTime.UtcNow.AddHours(1))
+            );
+            return new StickerImageUrlResponse(image);
+        });
+
+        return Ok(urls);
+    }
+
     [HttpGet("stickers/{stickerId:int}/image")]
     [ProducesResponseType<StickerImageUrlResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<MessageResponse>(StatusCodes.Status404NotFound)]
