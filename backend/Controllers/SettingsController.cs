@@ -76,6 +76,7 @@ public class SettingsController(BaseServices deps) : BaseApiController(deps)
     }
 
     [HttpGet("home/header")]
+    [ProducesResponseType<SettingRegistry.Site.Home.Header.HomeHeaderSettings>(StatusCodes.Status200OK)]
     public async Task<ActionResult> GetHomeHeader()
     {
         return Ok(await SettingRegistry.Site.Home.Header.GetValuesAsObjectAsync());
