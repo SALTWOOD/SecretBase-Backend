@@ -20,17 +20,17 @@ public class UserAdminController(BaseServices deps) : BaseApiController(deps)
 {
     [HttpGet]
     [ProducesResponseType(typeof(List<User>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<User>>> GetUsers([FromQuery] int page = 1, [FromQuery] int size = 10)
+    public async Task<ActionResult<List<User>>> GetUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
         page = Math.Max(1, page);
-        size = Math.Clamp(size, 1, 100);
+        pageSize = Math.Clamp(pageSize, 1, 100);
 
         var totalCount = await _db.Users.CountAsync();
 
         var users = await _db.Users
             .OrderByDescending(u => u.Id)
-            .Skip((page - 1) * size)
-            .Take(size)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
 
         Response.Headers.Append("X-Total-Count", totalCount.ToString());

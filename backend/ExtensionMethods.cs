@@ -31,16 +31,16 @@ public static class ExtensionMethods
     public static async Task<(List<T> Items, int TotalCount)> ToPageListAsync<T>(
         this IQueryable<T> query,
         int page,
-        int size)
+        int pageSize)
     {
         page = Math.Max(1, page);
-        size = Math.Clamp(size, 1, 100);
+        pageSize = Math.Clamp(pageSize, 1, 100);
 
         var totalCount = await query.CountAsync();
 
         var items = await query
-            .Skip((page - 1) * size)
-            .Take(size)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
 
         return (items, totalCount);

@@ -20,18 +20,18 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
 {
     [HttpGet]
     [ProducesResponseType<List<Invite>>(StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetInvitations([FromQuery] int page = 1, [FromQuery] int size = 10)
+    public async Task<IActionResult> GetInvitations([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
         if (page < 1) page = 1;
-        if (size > 100) size = 100;
+        if (pageSize > 100) pageSize = 100;
 
         var totalCount = await _db.Invites.CountAsync();
 
         var invites = await _db.Invites
             .Include(i => i.Creator)
             .OrderByDescending(it => it.Id)
-            .Skip((page - 1) * size)
-            .Take(size)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
 
         Response.Headers.Append("X-Total-Count", totalCount.ToString());
@@ -180,7 +180,7 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
 
     [HttpGet("{id:int}/users")]
     [ProducesResponseType<List<User>>(StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetInvitationUsers(int id, [FromQuery] int page = 1, [FromQuery] int size = 10)
+    public async Task<IActionResult> GetInvitationUsers(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
         var exists = await _db.Invites.AnyAsync(it => it.Id == id);
         if (!exists) return NotFound();
@@ -189,8 +189,8 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
 
         var users = await _db.Users
             .Where(u => u.UsedInviteId == id)
-            .Skip((page - 1) * size)
-            .Take(size)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
 
         totalCount = users.Count;
