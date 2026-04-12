@@ -25,25 +25,15 @@ public class PageController(BaseServices deps) : BaseApiController(deps)
 
         var totalCount = await query.CountAsync();
 
-        var pages = await query
+        var pagesRaw = await query
+            .Include(a => a.Author)
+            .Include(a => a.Comments)
             .OrderByDescending(a => a.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(a => new ArticleResponse
-            {
-                Id = a.Id,
-                Title = a.Title,
-                AuthorId = a.AuthorId,
-                AuthorUsername = a.Author != null ? a.Author.Username : null,
-                CreatedAt = a.CreatedAt,
-                UpdatedAt = a.UpdatedAt,
-                IsPublished = a.IsPublished,
-                CoverUrl = a.CoverUrl,
-                CommentCount = a.Comments.Count,
-                Type = a.Type,
-                Slug = a.Slug
-            })
             .ToListAsync();
+
+        var pages = pagesRaw.Select(ArticleMappingHelper.ToListResponse).ToList();
 
         Response.Headers.Append("X-Total-Count", totalCount.ToString());
 
@@ -56,27 +46,14 @@ public class PageController(BaseServices deps) : BaseApiController(deps)
     public async Task<IActionResult> GetPageBySlug(string slug)
     {
         var page = await _db.Articles
+            .Include(a => a.Author)
+            .Include(a => a.Comments)
             .Where(a => a.Slug == slug && a.Type == ArticleType.Page && a.IsPublished)
-            .Select(a => new ArticleResponse
-            {
-                Id = a.Id,
-                Title = a.Title,
-                Content = a.Content,
-                AuthorId = a.AuthorId,
-                AuthorUsername = a.Author != null ? a.Author.Username : null,
-                CreatedAt = a.CreatedAt,
-                UpdatedAt = a.UpdatedAt,
-                IsPublished = a.IsPublished,
-                CoverUrl = a.CoverUrl,
-                CommentCount = a.Comments.Count,
-                Type = a.Type,
-                Slug = a.Slug
-            })
             .FirstOrDefaultAsync();
 
         if (page == null) return NotFound(new MessageResponse("Page not found."));
 
-        return Ok(page);
+        return Ok(ArticleMappingHelper.ToDetailResponse(page));
     }
 
     [HttpGet("{id}")]
@@ -85,27 +62,14 @@ public class PageController(BaseServices deps) : BaseApiController(deps)
     public async Task<IActionResult> GetPage(int id)
     {
         var page = await _db.Articles
+            .Include(a => a.Author)
+            .Include(a => a.Comments)
             .Where(a => a.Id == id && a.Type == ArticleType.Page)
-            .Select(a => new ArticleResponse
-            {
-                Id = a.Id,
-                Title = a.Title,
-                Content = a.Content,
-                AuthorId = a.AuthorId,
-                AuthorUsername = a.Author != null ? a.Author.Username : null,
-                CreatedAt = a.CreatedAt,
-                UpdatedAt = a.UpdatedAt,
-                IsPublished = a.IsPublished,
-                CoverUrl = a.CoverUrl,
-                CommentCount = a.Comments.Count,
-                Type = a.Type,
-                Slug = a.Slug
-            })
             .FirstOrDefaultAsync();
 
         if (page == null) return NotFound(new MessageResponse("Page not found."));
 
-        return Ok(page);
+        return Ok(ArticleMappingHelper.ToDetailResponse(page));
     }
 
     [HttpPost]
@@ -138,13 +102,13 @@ public class PageController(BaseServices deps) : BaseApiController(deps)
         _db.Articles.Add(article);
         await _db.SaveChangesAsync();
 
+        var author = await _db.Users.FindAsync(article.AuthorId);
         var response = new ArticleResponse
         {
             Id = article.Id,
             Title = article.Title,
             Content = article.Content,
-            AuthorId = article.AuthorId,
-            AuthorUsername = (await _db.Users.FindAsync(article.AuthorId))?.Username,
+            Author = author != null ? UserDto.FromUser(author) : new UserDto(),
             CreatedAt = article.CreatedAt,
             UpdatedAt = article.UpdatedAt,
             IsPublished = article.IsPublished,
@@ -165,7 +129,10 @@ public class PageController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdatePage(int id, [FromBody] PageUpdateModel model)
     {
-        var page = await _db.Articles.FindAsync(id);
+        var page = await _db.Articles
+            .Include(a => a.Author)
+            .Include(a => a.Comments)
+            .FirstOrDefaultAsync(a => a.Id == id);
         if (page == null) return NotFound(new MessageResponse("Page not found."));
 
         if (page.Type != ArticleType.Page) return NotFound(new MessageResponse("Page not found."));
@@ -187,23 +154,7 @@ public class PageController(BaseServices deps) : BaseApiController(deps)
 
         await _db.SaveChangesAsync();
 
-        var response = new ArticleResponse
-        {
-            Id = page.Id,
-            Title = page.Title,
-            Content = page.Content,
-            AuthorId = page.AuthorId,
-            AuthorUsername = (await _db.Users.FindAsync(page.AuthorId))?.Username,
-            CreatedAt = page.CreatedAt,
-            UpdatedAt = page.UpdatedAt,
-            IsPublished = page.IsPublished,
-            CoverUrl = page.CoverUrl,
-            CommentCount = page.Comments.Count,
-            Type = page.Type,
-            Slug = page.Slug
-        };
-
-        return Ok(response);
+        return Ok(ArticleMappingHelper.ToDetailResponse(page));
     }
 
     [HttpDelete("{id}")]

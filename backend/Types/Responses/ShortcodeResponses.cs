@@ -1,4 +1,5 @@
 using backend.Database.Entities;
+using backend.Types.Responses;
 
 namespace backend.Types.Responses;
 
@@ -39,8 +40,7 @@ public record ShortcodeDetail
     public bool IsEnabled { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
-    public int CreatedByUserId { get; init; }
-    public string CreatedByUsername { get; init; } = string.Empty;
+    public UserDto CreatedBy { get; init; } = new();
 }
 
 /// <summary>

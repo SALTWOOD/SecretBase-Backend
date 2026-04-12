@@ -54,6 +54,16 @@ public class UserController(BaseServices deps) : BaseApiController(deps)
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
         }
 
+        if (model.Website != null)
+        {
+            if (!string.IsNullOrWhiteSpace(model.Website) &&
+                (!Uri.TryCreate(model.Website, UriKind.Absolute, out var uri) ||
+                 (uri.Scheme != "http" && uri.Scheme != "https")))
+                return BadRequest(new MessageResponse("Website must be a valid HTTP(S) URL."));
+
+            user.Website = string.IsNullOrWhiteSpace(model.Website) ? null : model.Website;
+        }
+
         await _db.SaveChangesAsync();
         return Ok(new MessageResponse("Profile updated."));
     }
@@ -122,4 +132,5 @@ public class UpdateProfileModel
     public string? NewPassword { get; set; }
     public string? Username { get; set; }
     public string? OldPassword { get; set; }
+    public string? Website { get; set; }
 }

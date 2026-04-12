@@ -26,25 +26,15 @@ public class ArticleController(BaseServices deps, IImgproxyClient imgproxyClient
 
         var totalCount = await query.CountAsync();
 
-        var articles = await query
+        var articlesRaw = await query
+            .Include(a => a.Author)
+            .Include(a => a.Comments)
             .OrderByDescending(a => a.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(a => new ArticleResponse
-            {
-                Id = a.Id,
-                Title = a.Title,
-                AuthorId = a.AuthorId,
-                AuthorUsername = a.Author != null ? a.Author.Username : null,
-                CreatedAt = a.CreatedAt,
-                UpdatedAt = a.UpdatedAt,
-                IsPublished = a.IsPublished,
-                CoverUrl = a.CoverUrl,
-                CommentCount = a.Comments.Count,
-                Type = a.Type,
-                Slug = a.Slug
-            })
             .ToListAsync();
+
+        var articles = articlesRaw.Select(ArticleMappingHelper.ToListResponse).ToList();
 
         Response.Headers.Append("X-Total-Count", totalCount.ToString());
 
@@ -57,27 +47,14 @@ public class ArticleController(BaseServices deps, IImgproxyClient imgproxyClient
     public async Task<IActionResult> GetArticleBySlug(string slug)
     {
         var article = await _db.Articles
+            .Include(a => a.Author)
+            .Include(a => a.Comments)
             .Where(a => a.Slug == slug && a.Type == ArticleType.Post)
-            .Select(a => new ArticleResponse
-            {
-                Id = a.Id,
-                Title = a.Title,
-                Content = a.Content,
-                AuthorId = a.AuthorId,
-                AuthorUsername = a.Author != null ? a.Author.Username : null,
-                CreatedAt = a.CreatedAt,
-                UpdatedAt = a.UpdatedAt,
-                IsPublished = a.IsPublished,
-                CoverUrl = a.CoverUrl,
-                CommentCount = a.Comments.Count,
-                Type = a.Type,
-                Slug = a.Slug
-            })
             .FirstOrDefaultAsync();
 
         if (article == null) return NotFound(new MessageResponse("Article not found."));
 
-        return Ok(article);
+        return Ok(ArticleMappingHelper.ToDetailResponse(article));
     }
 
     [HttpGet("{id}")]
@@ -86,27 +63,14 @@ public class ArticleController(BaseServices deps, IImgproxyClient imgproxyClient
     public async Task<IActionResult> GetArticle(int id)
     {
         var article = await _db.Articles
+            .Include(a => a.Author)
+            .Include(a => a.Comments)
             .Where(a => a.Id == id && a.Type == ArticleType.Post)
-            .Select(a => new ArticleResponse
-            {
-                Id = a.Id,
-                Title = a.Title,
-                Content = a.Content,
-                AuthorId = a.AuthorId,
-                AuthorUsername = a.Author != null ? a.Author.Username : null,
-                CreatedAt = a.CreatedAt,
-                UpdatedAt = a.UpdatedAt,
-                IsPublished = a.IsPublished,
-                CoverUrl = a.CoverUrl,
-                CommentCount = a.Comments.Count,
-                Type = a.Type,
-                Slug = a.Slug
-            })
             .FirstOrDefaultAsync();
 
         if (article == null) return NotFound(new MessageResponse("Article not found."));
 
-        return Ok(article);
+        return Ok(ArticleMappingHelper.ToDetailResponse(article));
     }
 
     [HttpPost]
@@ -137,13 +101,13 @@ public class ArticleController(BaseServices deps, IImgproxyClient imgproxyClient
         _db.Articles.Add(article);
         await _db.SaveChangesAsync();
 
+        var author = await _db.Users.FindAsync(article.AuthorId);
         var response = new ArticleResponse
         {
             Id = article.Id,
             Title = article.Title,
             Content = article.Content,
-            AuthorId = article.AuthorId,
-            AuthorUsername = (await _db.Users.FindAsync(article.AuthorId))?.Username,
+            Author = author != null ? UserDto.FromUser(author) : new UserDto(),
             CreatedAt = article.CreatedAt,
             UpdatedAt = article.UpdatedAt,
             IsPublished = article.IsPublished,
@@ -164,7 +128,10 @@ public class ArticleController(BaseServices deps, IImgproxyClient imgproxyClient
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateArticle(int id, [FromBody] ArticleUpdateModel model)
     {
-        var article = await _db.Articles.FindAsync(id);
+        var article = await _db.Articles
+            .Include(a => a.Author)
+            .Include(a => a.Comments)
+            .FirstOrDefaultAsync(a => a.Id == id);
         if (article == null) return NotFound(new MessageResponse("Article not found."));
 
         if (CurrentUserId == null) return BadRequest(new MessageResponse("User not authenticated."));
@@ -184,23 +151,7 @@ public class ArticleController(BaseServices deps, IImgproxyClient imgproxyClient
 
         await _db.SaveChangesAsync();
 
-        var response = new ArticleResponse
-        {
-            Id = article.Id,
-            Title = article.Title,
-            Content = article.Content,
-            AuthorId = article.AuthorId,
-            AuthorUsername = (await _db.Users.FindAsync(article.AuthorId))?.Username,
-            CreatedAt = article.CreatedAt,
-            UpdatedAt = article.UpdatedAt,
-            IsPublished = article.IsPublished,
-            CoverUrl = article.CoverUrl,
-            CommentCount = article.Comments.Count,
-            Type = article.Type,
-            Slug = article.Slug
-        };
-
-        return Ok(response);
+        return Ok(ArticleMappingHelper.ToDetailResponse(article));
     }
 
     [HttpDelete("{id}")]

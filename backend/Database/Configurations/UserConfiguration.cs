@@ -27,6 +27,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(x => x.TotpRecoveryCodes)
             .HasColumnType("text[]");
 
+        builder.Property(x => x.Website).HasMaxLength(500);
+
         builder.Property(x => x.RegisterTime)
             .HasColumnType("timestamptz")
             .HasDefaultValueSql("CURRENT_TIMESTAMP");

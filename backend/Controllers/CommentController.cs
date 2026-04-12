@@ -3,6 +3,7 @@ using backend.Filters;
 using backend.Services;
 using backend.Types.Request;
 using backend.Types.Response;
+using backend.Types.Responses;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,28 +20,17 @@ public class CommentController(BaseServices deps) : BaseApiController(deps)
         var article = await _db.Articles.FindAsync(articleId);
         if (article == null) return NotFound(new MessageResponse("Article not found."));
 
-        var comments = await _db.Comments
+        var commentsRaw = await _db.Comments
+            .Include(c => c.Author)
+            .Include(c => c.Replies)
             .Where(c => c.ArticleId == articleId && !c.IsDeleted && c.ReviewStatus == ReviewStatus.Approved &&
                         c.ParentCommentId == null)
             .OrderByDescending(c => c.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(c => new CommentResponse
-            {
-                Id = c.Id,
-                Content = c.Content,
-                ArticleId = c.ArticleId,
-                AuthorId = c.AuthorId,
-                AuthorUsername = c.Author != null ? c.Author.Username : null,
-                ParentCommentId = c.ParentCommentId,
-                CreatedAt = c.CreatedAt,
-                UpdatedAt = c.UpdatedAt,
-                IsDeleted = c.IsDeleted,
-                ReplyCount = c.Replies.Count(r => !r.IsDeleted && r.ReviewStatus == ReviewStatus.Approved),
-                GuestNickname = c.Metadata.GuestNickname,
-                GuestWebsite = c.Metadata.GuestWebsite
-            })
             .ToListAsync();
+
+        var comments = commentsRaw.Select(MapToCommentResponse).ToList();
 
         return Ok(comments);
     }
@@ -53,27 +43,16 @@ public class CommentController(BaseServices deps) : BaseApiController(deps)
         var parentComment = await _db.Comments.FindAsync(commentId);
         if (parentComment == null) return NotFound(new MessageResponse("Comment not found."));
 
-        var replies = await _db.Comments
+        var repliesRaw = await _db.Comments
+            .Include(c => c.Author)
+            .Include(c => c.Replies)
             .Where(c => c.ParentCommentId == commentId && !c.IsDeleted && c.ReviewStatus == ReviewStatus.Approved)
             .OrderBy(c => c.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(c => new CommentResponse
-            {
-                Id = c.Id,
-                Content = c.Content,
-                ArticleId = c.ArticleId,
-                AuthorId = c.AuthorId,
-                AuthorUsername = c.Author != null ? c.Author.Username : null,
-                ParentCommentId = c.ParentCommentId,
-                CreatedAt = c.CreatedAt,
-                UpdatedAt = c.UpdatedAt,
-                IsDeleted = c.IsDeleted,
-                ReplyCount = c.Replies.Count(r => !r.IsDeleted && r.ReviewStatus == ReviewStatus.Approved),
-                GuestNickname = c.Metadata.GuestNickname,
-                GuestWebsite = c.Metadata.GuestWebsite
-            })
             .ToListAsync();
+
+        var replies = repliesRaw.Select(MapToCommentResponse).ToList();
 
         return Ok(replies);
     }
@@ -140,8 +119,8 @@ public class CommentController(BaseServices deps) : BaseApiController(deps)
         _db.Comments.Add(comment);
         await _db.SaveChangesAsync();
 
-        var authorUsername = CurrentUserId.HasValue
-            ? (await _db.Users.FindAsync(CurrentUserId.Value))?.Username
+        var author = CurrentUserId.HasValue
+            ? await _db.Users.FindAsync(CurrentUserId.Value)
             : null;
 
         var response = new CommentResponse
@@ -149,15 +128,14 @@ public class CommentController(BaseServices deps) : BaseApiController(deps)
             Id = comment.Id,
             Content = comment.Content,
             ArticleId = comment.ArticleId,
-            AuthorId = comment.AuthorId,
-            AuthorUsername = authorUsername,
+            Author = author != null
+                ? UserDto.FromUser(author)
+                : UserDto.FromGuest(comment.Metadata),
             ParentCommentId = comment.ParentCommentId,
             CreatedAt = comment.CreatedAt,
             UpdatedAt = comment.UpdatedAt,
             IsDeleted = comment.IsDeleted,
-            ReplyCount = 0,
-            GuestNickname = comment.Metadata.GuestNickname,
-            GuestWebsite = comment.Metadata.GuestWebsite
+            ReplyCount = 0
         };
 
         return CreatedAtAction(nameof(GetCommentsByArticle), new { articleId = comment.ArticleId }, response);
@@ -171,7 +149,10 @@ public class CommentController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateComment(int id, [FromBody] CommentUpdateModel model)
     {
-        var comment = await _db.Comments.FindAsync(id);
+        var comment = await _db.Comments
+            .Include(c => c.Author)
+            .Include(c => c.Replies)
+            .FirstOrDefaultAsync(c => c.Id == id);
         if (comment == null) return NotFound(new MessageResponse("Comment not found."));
 
         if (CurrentUserId == null) return BadRequest(new MessageResponse("User not authenticated."));
@@ -183,21 +164,7 @@ public class CommentController(BaseServices deps) : BaseApiController(deps)
 
         await _db.SaveChangesAsync();
 
-        var response = new CommentResponse
-        {
-            Id = comment.Id,
-            Content = comment.Content,
-            ArticleId = comment.ArticleId,
-            AuthorId = comment.AuthorId,
-            AuthorUsername = (await _db.Users.FindAsync(comment.AuthorId))?.Username,
-            ParentCommentId = comment.ParentCommentId,
-            CreatedAt = comment.CreatedAt,
-            UpdatedAt = comment.UpdatedAt,
-            IsDeleted = comment.IsDeleted,
-            ReplyCount = comment.Replies.Count(r => !r.IsDeleted && r.ReviewStatus == ReviewStatus.Approved),
-            GuestNickname = comment.Metadata.GuestNickname,
-            GuestWebsite = comment.Metadata.GuestWebsite
-        };
+        var response = MapToCommentResponse(comment);
 
         return Ok(response);
     }
@@ -222,5 +189,23 @@ public class CommentController(BaseServices deps) : BaseApiController(deps)
         await _db.SaveChangesAsync();
 
         return Ok(new MessageResponse("Comment deleted successfully."));
+    }
+
+    private CommentResponse MapToCommentResponse(Comment c)
+    {
+        return new CommentResponse
+        {
+            Id = c.Id,
+            Content = c.Content,
+            ArticleId = c.ArticleId,
+            Author = c.Author != null
+                ? UserDto.FromUser(c.Author)
+                : UserDto.FromGuest(c.Metadata),
+            ParentCommentId = c.ParentCommentId,
+            CreatedAt = c.CreatedAt,
+            UpdatedAt = c.UpdatedAt,
+            IsDeleted = c.IsDeleted,
+            ReplyCount = c.Replies.Count(r => !r.IsDeleted && r.ReviewStatus == ReviewStatus.Approved)
+        };
     }
 }

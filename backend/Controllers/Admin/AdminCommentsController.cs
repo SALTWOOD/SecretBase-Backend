@@ -1,6 +1,7 @@
 using backend.Database.Entities;
 using backend.Services;
 using backend.Types.Response;
+using backend.Types.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,16 +13,12 @@ public class AdminCommentResponse
     public int Id { get; set; }
     public string Content { get; set; } = string.Empty;
     public int ArticleId { get; set; }
-    public int? AuthorId { get; set; }
-    public string? AuthorUsername { get; set; }
+    public UserDto Author { get; set; } = new();
     public int? ParentCommentId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public bool IsDeleted { get; set; }
     public ReviewStatus ReviewStatus { get; set; }
-    public string? GuestNickname { get; set; }
-    public string? GuestEmail { get; set; }
-    public string? GuestWebsite { get; set; }
     public string? IpAddress { get; set; }
 }
 
@@ -47,29 +44,28 @@ public class AdminCommentsController(BaseServices deps) : BaseApiController(deps
 
         var totalCount = await query.CountAsync();
 
-        var comments = await query
+        var commentsRaw = await query
             .Include(c => c.Author)
             .OrderByDescending(c => c.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(c => new AdminCommentResponse
-            {
-                Id = c.Id,
-                Content = c.Content,
-                ArticleId = c.ArticleId,
-                AuthorId = c.AuthorId,
-                AuthorUsername = c.Author != null ? c.Author.Username : null,
-                ParentCommentId = c.ParentCommentId,
-                CreatedAt = c.CreatedAt,
-                UpdatedAt = c.UpdatedAt,
-                IsDeleted = c.IsDeleted,
-                ReviewStatus = c.ReviewStatus,
-                GuestNickname = c.Metadata.GuestNickname,
-                GuestEmail = c.Metadata.GuestEmail,
-                GuestWebsite = c.Metadata.GuestWebsite,
-                IpAddress = c.Metadata.IpAddress
-            })
             .ToListAsync();
+
+        var comments = commentsRaw.Select(c => new AdminCommentResponse
+        {
+            Id = c.Id,
+            Content = c.Content,
+            ArticleId = c.ArticleId,
+            Author = c.Author != null
+                ? UserDto.FromUserWithEmail(c.Author)
+                : UserDto.FromGuestWithEmail(c.Metadata),
+            ParentCommentId = c.ParentCommentId,
+            CreatedAt = c.CreatedAt,
+            UpdatedAt = c.UpdatedAt,
+            IsDeleted = c.IsDeleted,
+            ReviewStatus = c.ReviewStatus,
+            IpAddress = c.Metadata.IpAddress
+        }).ToList();
 
         Response.Headers.Append("X-Total-Count", totalCount.ToString());
 
@@ -89,29 +85,28 @@ public class AdminCommentsController(BaseServices deps) : BaseApiController(deps
 
         var totalCount = await query.CountAsync();
 
-        var comments = await query
+        var commentsRaw = await query
             .Include(c => c.Author)
             .OrderBy(c => c.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(c => new AdminCommentResponse
-            {
-                Id = c.Id,
-                Content = c.Content,
-                ArticleId = c.ArticleId,
-                AuthorId = c.AuthorId,
-                AuthorUsername = c.Author != null ? c.Author.Username : null,
-                ParentCommentId = c.ParentCommentId,
-                CreatedAt = c.CreatedAt,
-                UpdatedAt = c.UpdatedAt,
-                IsDeleted = c.IsDeleted,
-                ReviewStatus = c.ReviewStatus,
-                GuestNickname = c.Metadata.GuestNickname,
-                GuestEmail = c.Metadata.GuestEmail,
-                GuestWebsite = c.Metadata.GuestWebsite,
-                IpAddress = c.Metadata.IpAddress
-            })
             .ToListAsync();
+
+        var comments = commentsRaw.Select(c => new AdminCommentResponse
+        {
+            Id = c.Id,
+            Content = c.Content,
+            ArticleId = c.ArticleId,
+            Author = c.Author != null
+                ? UserDto.FromUserWithEmail(c.Author)
+                : UserDto.FromGuestWithEmail(c.Metadata),
+            ParentCommentId = c.ParentCommentId,
+            CreatedAt = c.CreatedAt,
+            UpdatedAt = c.UpdatedAt,
+            IsDeleted = c.IsDeleted,
+            ReviewStatus = c.ReviewStatus,
+            IpAddress = c.Metadata.IpAddress
+        }).ToList();
 
         Response.Headers.Append("X-Total-Count", totalCount.ToString());
 

@@ -53,25 +53,11 @@ public class ShortcodeService
     /// </summary>
     public async Task<List<ShortcodeDetail>> GetAllShortcodesAsync()
     {
-        return await _db.Shortcodes
+        var shortcodesRaw = await _db.Shortcodes
             .Include(s => s.CreatedBy)
-            .Select(s => new ShortcodeDetail
-            {
-                Id = s.Id,
-                Name = s.Name,
-                DisplayName = s.DisplayName,
-                Description = s.Description,
-                FrontendCode = s.FrontendCode,
-                BackendCode = s.BackendCode,
-                Permission = s.Permission,
-                AllowedRoles = s.AllowedRoles,
-                IsEnabled = s.IsEnabled,
-                CreatedAt = s.CreatedAt,
-                UpdatedAt = s.UpdatedAt,
-                CreatedByUserId = s.CreatedByUserId,
-                CreatedByUsername = s.CreatedBy.Username
-            })
             .ToListAsync();
+
+        return shortcodesRaw.Select(MapToShortcodeDetail).ToList();
     }
 
     /// <summary>
@@ -85,22 +71,7 @@ public class ShortcodeService
 
         if (shortcode == null) return null;
 
-        return new ShortcodeDetail
-        {
-            Id = shortcode.Id,
-            Name = shortcode.Name,
-            DisplayName = shortcode.DisplayName,
-            Description = shortcode.Description,
-            FrontendCode = shortcode.FrontendCode,
-            BackendCode = shortcode.BackendCode,
-            Permission = shortcode.Permission,
-            AllowedRoles = shortcode.AllowedRoles,
-            IsEnabled = shortcode.IsEnabled,
-            CreatedAt = shortcode.CreatedAt,
-            UpdatedAt = shortcode.UpdatedAt,
-            CreatedByUserId = shortcode.CreatedByUserId,
-            CreatedByUsername = shortcode.CreatedBy.Username
-        };
+        return MapToShortcodeDetail(shortcode);
     }
 
     /// <summary>
@@ -323,6 +294,25 @@ public class ShortcodeService
         await _db.SaveChangesAsync();
 
         return true;
+    }
+
+    private ShortcodeDetail MapToShortcodeDetail(Shortcode s)
+    {
+        return new ShortcodeDetail
+        {
+            Id = s.Id,
+            Name = s.Name,
+            DisplayName = s.DisplayName,
+            Description = s.Description,
+            FrontendCode = s.FrontendCode,
+            BackendCode = s.BackendCode,
+            Permission = s.Permission,
+            AllowedRoles = s.AllowedRoles,
+            IsEnabled = s.IsEnabled,
+            CreatedAt = s.CreatedAt,
+            UpdatedAt = s.UpdatedAt,
+            CreatedBy = s.CreatedBy != null ? UserDto.FromUser(s.CreatedBy) : new UserDto()
+        };
     }
 
     /// <summary>

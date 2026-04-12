@@ -21,6 +21,8 @@ public class User
 
     public string Avatar { get; set; } = string.Empty;
 
+    public string? Website { get; set; }
+
     [JsonIgnore] public LastLogin? LastLoginInfo { get; set; }
 
     public int? UsedInviteId { get; set; }
