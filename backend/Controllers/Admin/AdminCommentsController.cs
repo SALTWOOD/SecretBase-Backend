@@ -122,8 +122,6 @@ public class AdminCommentsController(BaseServices deps) : BaseApiController(deps
         if (comment == null) return NotFound(new MessageResponse("Comment not found."));
 
         comment.ReviewStatus = ReviewStatus.Approved;
-        comment.UpdatedAt = DateTime.UtcNow;
-
         await _db.SaveChangesAsync();
 
         return Ok(new MessageResponse("Comment approved."));
@@ -138,7 +136,6 @@ public class AdminCommentsController(BaseServices deps) : BaseApiController(deps
         if (comment == null) return NotFound(new MessageResponse("Comment not found."));
 
         comment.ReviewStatus = ReviewStatus.Pending;
-        comment.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
 
@@ -154,7 +151,6 @@ public class AdminCommentsController(BaseServices deps) : BaseApiController(deps
         if (comment == null) return NotFound(new MessageResponse("Comment not found."));
 
         comment.ReviewStatus = ReviewStatus.Rejected;
-        comment.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
 
