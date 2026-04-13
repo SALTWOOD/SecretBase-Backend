@@ -129,6 +129,22 @@ public class AdminCommentsController(BaseServices deps) : BaseApiController(deps
         return Ok(new MessageResponse("Comment approved."));
     }
 
+    [HttpPut("{id}/pend")]
+    [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> PendComment(int id)
+    {
+        var comment = await _db.Comments.FindAsync(id);
+        if (comment == null) return NotFound(new MessageResponse("Comment not found."));
+
+        comment.ReviewStatus = ReviewStatus.Pending;
+        comment.UpdatedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+
+        return Ok(new MessageResponse("Comment pended."));
+    }
+
     [HttpPut("{id}/reject")]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status404NotFound)]
