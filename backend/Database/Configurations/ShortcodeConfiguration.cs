@@ -8,6 +8,8 @@ public class ShortcodeConfiguration : IEntityTypeConfiguration<Shortcode>
 {
     public void Configure(EntityTypeBuilder<Shortcode> entity)
     {
+        entity.ToTable("shortcodes");
+        
         entity.HasKey(e => e.Id);
 
         entity.HasIndex(e => e.Name).IsUnique();

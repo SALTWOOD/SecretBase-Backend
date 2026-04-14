@@ -8,6 +8,8 @@ public class FileShareConfiguration : IEntityTypeConfiguration<Entities.FileShar
 {
     public void Configure(EntityTypeBuilder<Entities.FileShare> entity)
     {
+        entity.ToTable("file_shares");
+        
         entity.HasKey(e => e.ShortId);
 
         entity.HasIndex(e => e.OwnerId);
