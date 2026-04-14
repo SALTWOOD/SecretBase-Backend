@@ -6,35 +6,35 @@ namespace backend.Database.Configurations;
 
 public class ShortcodeConfiguration : IEntityTypeConfiguration<Shortcode>
 {
-    public void Configure(EntityTypeBuilder<Shortcode> entity)
+    public void Configure(EntityTypeBuilder<Shortcode> builder)
     {
-        entity.ToTable("shortcodes");
+        builder.ToTable("shortcodes");
         
-        entity.HasKey(e => e.Id);
+        builder.HasKey(e => e.Id);
 
-        entity.HasIndex(e => e.Name).IsUnique();
+        builder.HasIndex(e => e.Name).IsUnique();
 
-        entity.Property(e => e.Name)
+        builder.Property(e => e.Name)
             .IsRequired()
             .HasMaxLength(100);
 
-        entity.Property(e => e.DisplayName)
+        builder.Property(e => e.DisplayName)
             .IsRequired()
             .HasMaxLength(200);
 
-        entity.Property(e => e.Description)
+        builder.Property(e => e.Description)
             .HasMaxLength(1000);
 
-        entity.Property(e => e.FrontendCode)
+        builder.Property(e => e.FrontendCode)
             .IsRequired();
 
-        entity.Property(e => e.BackendCode)
+        builder.Property(e => e.BackendCode)
             .IsRequired();
 
-        entity.Property(e => e.AllowedRoles)
+        builder.Property(e => e.AllowedRoles)
             .HasColumnType("text[]");
 
-        entity.HasOne(e => e.CreatedBy)
+        builder.HasOne(e => e.CreatedBy)
             .WithMany()
             .HasForeignKey(e => e.CreatedByUserId)
             .OnDelete(DeleteBehavior.Restrict);

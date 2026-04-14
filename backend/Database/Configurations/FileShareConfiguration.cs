@@ -6,36 +6,36 @@ namespace backend.Database.Configurations;
 
 public class FileShareConfiguration : IEntityTypeConfiguration<Entities.FileShare>
 {
-    public void Configure(EntityTypeBuilder<Entities.FileShare> entity)
+    public void Configure(EntityTypeBuilder<Entities.FileShare> builder)
     {
-        entity.ToTable("file_shares");
+        builder.ToTable("file_shares");
         
-        entity.HasKey(e => e.ShortId);
+        builder.HasKey(e => e.ShortId);
 
-        entity.HasIndex(e => e.OwnerId);
+        builder.HasIndex(e => e.OwnerId);
 
-        entity.HasIndex(e => e.CreatedAt);
+        builder.HasIndex(e => e.CreatedAt);
 
-        entity.Property(e => e.ShortId)
+        builder.Property(e => e.ShortId)
             .IsRequired()
             .HasMaxLength(32);
 
-        entity.Property(e => e.Bucket)
+        builder.Property(e => e.Bucket)
             .IsRequired()
             .HasMaxLength(255);
 
-        entity.Property(e => e.Key)
+        builder.Property(e => e.Key)
             .IsRequired()
             .HasMaxLength(1024);
 
-        entity.Property(e => e.FileName)
+        builder.Property(e => e.FileName)
             .IsRequired()
             .HasMaxLength(255);
 
-        entity.Property(e => e.Remarks)
+        builder.Property(e => e.Remarks)
             .HasMaxLength(128);
 
-        entity.HasOne(e => e.Owner)
+        builder.HasOne(e => e.Owner)
             .WithMany()
             .HasForeignKey(e => e.OwnerId)
             .OnDelete(DeleteBehavior.Restrict);
