@@ -12,6 +12,7 @@ using static backend.Services.SessionService;
 
 namespace backend.Controllers.Auth;
 
+[Route("auth/github")]
 public class GitHubAuthController(BaseServices deps) : BaseApiController(deps)
 {
     private const string Provider = "GitHub";
