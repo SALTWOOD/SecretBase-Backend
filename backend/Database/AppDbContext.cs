@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<Entities.FileShare> FileShares => Set<Entities.FileShare>();
     public DbSet<StickerSet> StickerSets => Set<StickerSet>();
     public DbSet<Sticker> Stickers => Set<Sticker>();
+    public DbSet<ThirdPartyBinding> ThirdPartyBindings => Set<ThirdPartyBinding>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

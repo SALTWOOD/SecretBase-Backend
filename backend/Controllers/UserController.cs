@@ -21,7 +21,7 @@ public class UserController(BaseServices deps) : BaseApiController(deps)
         return Ok(await CurrentUser);
     }
 
-    [Authorize(Policy = "CookieOnly")] // 密码修改仅限 Cookie Session
+    [Authorize(Policy = "CookieOnly")]
     [HttpPost("profile")]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status400BadRequest)]
@@ -66,6 +66,43 @@ public class UserController(BaseServices deps) : BaseApiController(deps)
 
         await _db.SaveChangesAsync();
         return Ok(new MessageResponse("Profile updated."));
+    }
+
+    [HttpGet("bindings")]
+    [Authorize]
+    [ProducesResponseType(typeof(List<ThirdPartyBindingDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetBindings()
+    {
+        var bindings = await _db.ThirdPartyBindings
+            .Where(b => b.UserId == CurrentUserId)
+            .Select(b => new ThirdPartyBindingDto
+            {
+                Provider = b.Provider,
+                ProviderUsername = b.ProviderUsername,
+                ProviderAvatarUrl = b.ProviderAvatarUrl,
+                CreatedAt = b.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(bindings);
+    }
+
+    [HttpDelete("bindings/{provider}")]
+    [Authorize(Policy = "CookieOnly")]
+    [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Unbind(string provider)
+    {
+        var binding = await _db.ThirdPartyBindings
+            .FirstOrDefaultAsync(b => b.UserId == CurrentUserId && b.Provider == provider);
+
+        if (binding == null)
+            return NotFound(new MessageResponse("Binding not found."));
+
+        _db.ThirdPartyBindings.Remove(binding);
+        await _db.SaveChangesAsync();
+
+        return Ok(new MessageResponse("Binding removed."));
     }
 
     [HttpPost("avatar")]
@@ -133,4 +170,12 @@ public class UpdateProfileModel
     public string? Username { get; set; }
     public string? OldPassword { get; set; }
     public string? Website { get; set; }
+}
+
+public class ThirdPartyBindingDto
+{
+    public string Provider { get; set; } = string.Empty;
+    public string ProviderUsername { get; set; } = string.Empty;
+    public string? ProviderAvatarUrl { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
