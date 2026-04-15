@@ -1,4 +1,4 @@
-﻿using backend.Types.Request;
+using backend.Types.Request;
 using System.Text.Json.Serialization;
 
 namespace backend.Services;
@@ -13,11 +13,13 @@ public class CapValidateService : ICapValidateService
 {
     private readonly IConfiguration _config;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILogger<CapValidateService> _logger;
 
-    public CapValidateService(IConfiguration config, IHttpClientFactory httpClientFactory)
+    public CapValidateService(IConfiguration config, IHttpClientFactory httpClientFactory, ILogger<CapValidateService> logger)
     {
         _config = config;
         _httpClientFactory = httpClientFactory;
+        _logger = logger;
     }
 
     public Task<bool> ValidateAsync(ICaptchaRequest request)
@@ -51,8 +53,9 @@ public class CapValidateService : ICapValidateService
 
             return result?.Success ?? false;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Captcha validation failed");
             return false;
         }
     }
