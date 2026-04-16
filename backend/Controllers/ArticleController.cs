@@ -187,7 +187,6 @@ public class ArticleController(BaseServices deps, IImgproxyClient imgproxyClient
                 var image = imgproxyClient.BuildUrl(url, options =>
                     options.Resize(1200, 675, ResizeMode.Fit)
                         .Format(ImageFormat.WebP)
-                        .Expires(DateTime.UtcNow.AddHours(1))
                 );
                 return Redirect(image);
             default:

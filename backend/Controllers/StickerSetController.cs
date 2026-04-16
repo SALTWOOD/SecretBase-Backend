@@ -92,7 +92,6 @@ public class StickerSetController(BaseServices deps, IImgproxyClient imgproxyCli
                 options.Resize(256, 256, ResizeMode.Fit)
                     .Quality(80)
                     .Format(ImageFormat.WebP)
-                    .Expires(DateTime.UtcNow.AddHours(1))
             );
             return new StickerUrlResponse(s.Id, s.Name, image);
         });
@@ -119,7 +118,6 @@ public class StickerSetController(BaseServices deps, IImgproxyClient imgproxyCli
             options.Resize(256, 256, ResizeMode.Fit)
                 .Quality(80)
                 .Format(ImageFormat.WebP)
-                .Expires(DateTime.UtcNow.AddHours(1))
         );
 
         return Ok(new StickerUrlResponse(sticker.Id, sticker.Name, imageUrl));
