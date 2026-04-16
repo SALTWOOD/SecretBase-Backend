@@ -54,22 +54,22 @@ public class GitHubAuthController(BaseServices deps) : BaseApiController(deps)
     public async Task<IActionResult> Callback(string? code, string? state)
     {
         if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(state))
-            return Redirect("/auth/login?error=github_callback_failed");
+            return Redirect("/auth/login?state=github_callback_failed");
 
         var oauthState = await GetAndDeleteStateAsync(state);
         if (oauthState == null)
-            return Redirect("/auth/login?error=github_state_expired");
+            return Redirect("/auth/login?state=github_state_expired");
 
         var (clientId, clientSecret, error) = await GetGitHubSettings();
-        if (error != null) return Redirect("/auth/login?error=github_misconfigured");
+        if (error != null) return Redirect("/auth/login?state=github_misconfigured");
 
         var token = await ExchangeCodeForTokenAsync(clientId!, clientSecret!, code);
         if (token == null)
-            return Redirect("/auth/login?error=github_token_failed");
+            return Redirect("/auth/login?state=github_token_failed");
 
         var githubUser = await GetGitHubUserAsync(token);
         if (githubUser == null)
-            return Redirect("/auth/login?error=github_user_failed");
+            return Redirect("/auth/login?state=github_user_failed");
 
         var githubId = githubUser.Value.GetProperty("id").ToString()!;
         var githubLogin = githubUser.Value.GetProperty("login").GetString()!;
@@ -81,12 +81,12 @@ public class GitHubAuthController(BaseServices deps) : BaseApiController(deps)
         {
             case "bind":
                 if (oauthState.UserId == null)
-                    return Redirect("/auth/login?error=github_invalid_action");
+                    return Redirect("/auth/login?state=github_invalid_action");
                 return await HandleBind(oauthState.UserId.Value, githubId, githubLogin, githubAvatar, token);
             case "login":
                 return await HandleLogin(githubId, githubLogin, githubAvatar, token);
             default:
-                return Redirect("/auth/login?error=github_invalid_action");
+                return Redirect("/auth/login?state=github_invalid_action");
         }
     }
 
@@ -128,11 +128,11 @@ public class GitHubAuthController(BaseServices deps) : BaseApiController(deps)
             .FirstOrDefaultAsync(b => b.Provider == Provider && b.ProviderUserId == githubId);
 
         if (binding == null)
-            return Redirect("/auth/login?error=github_not_bound");
+            return Redirect("/auth/login?state=github_not_bound");
 
         var user = binding.User;
         if (user.IsBanned)
-            return Redirect("/auth/login?error=user_banned");
+            return Redirect("/auth/login?state=user_banned");
 
         binding.ProviderUsername = githubLogin;
         binding.ProviderAvatarUrl = githubAvatar;
@@ -142,7 +142,7 @@ public class GitHubAuthController(BaseServices deps) : BaseApiController(deps)
         await UpdateLastLoginAsync(user, HttpContext);
         await RefreshTokenAsync(user);
 
-        return Redirect("/dash");
+        return Redirect("/auto/login?state=github_callback_success");
     }
 
     private async Task<(string? ClientId, string? ClientSecret, IActionResult? Error)> GetGitHubSettings()
