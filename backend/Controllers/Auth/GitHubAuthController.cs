@@ -142,7 +142,7 @@ public class GitHubAuthController(BaseServices deps) : BaseApiController(deps)
         await UpdateLastLoginAsync(user, HttpContext);
         await RefreshTokenAsync(user);
 
-        return Redirect("/auto/login?state=github_callback_success");
+        return Redirect("/auth/login?state=github_callback_success");
     }
 
     private async Task<(string? ClientId, string? ClientSecret, IActionResult? Error)> GetGitHubSettings()
