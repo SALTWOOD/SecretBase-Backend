@@ -28,7 +28,7 @@ public static partial class SettingRegistry
         ["site.comment.guest.allow_reply:bool"] = true,
         ["site.home.background.url:string"] = null,
         ["site.home.background.blur:int"] = 0,
-        ["site.home.background.opacity:double"] = 1.0,
+        ["site.home.background.brightness:int"] = 100,
         ["site.home.banner.content:string"] = "Welcome to My Site",
         ["site.home.banner.display_mode:string"] = "full",
         ["site.home.sidebar.left:json"] = null,
