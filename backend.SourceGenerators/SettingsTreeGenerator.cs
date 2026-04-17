@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Buffers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -68,13 +68,17 @@ public class GenerateSettingsTreeAttribute : System.Attribute { }", Encoding.UTF
         // 3. 获取类名
         var className = cds.Identifier.Text;
 
-        // 4. 提取 Keys 数组
-        var keysField = cds.Members.OfType<FieldDeclarationSyntax>()
-            .FirstOrDefault(f => f.Declaration.Variables.Any(v => v.Identifier.Text == "Keys"));
-        var initializer = keysField?.Declaration.Variables.First().Initializer?.Value;
-        var keys = initializer?.DescendantTokens()
-            .Where(t => t.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.StringLiteralToken))
-            .Select(t => t.ValueText).ToList();
+        // 4. 从 DefaultValues 字典初始化器中提取 key
+        var dvField = cds.Members.OfType<FieldDeclarationSyntax>()
+            .FirstOrDefault(f => f.Declaration.Variables.Any(v => v.Identifier.Text == "DefaultValues"));
+        var dvInit = dvField?.Declaration.Variables.First().Initializer?.Value;
+        var keys = dvInit?.DescendantNodes()
+            .OfType<ImplicitElementAccessSyntax>()
+            .Select(iea => iea.ArgumentList.Arguments.FirstOrDefault()?.Expression)
+            .OfType<LiteralExpressionSyntax>()
+            .Where(lit => lit.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.StringLiteralExpression))
+            .Select(lit => lit.Token.ValueText)
+            .ToList();
 
         return keys != null ? new TargetClassInfo(ns, className, keys) : null;
     }

@@ -5,43 +5,7 @@ namespace backend.Services;
 [GenerateSettingsTree]
 public static partial class SettingRegistry
 {
-    public static readonly string[] Keys =
-    [
-        "site.seo.general.title:string",
-        "site.seo.general.description:string",
-        "site.seo.general.keywords:string",
-        "site.seo.general.robots:string",
-        "site.seo.og.title:string",
-        "site.seo.og.description:string",
-        "site.seo.og.image:string",
-        "site.seo.social.twitter_card:string",
-        "site.security.cookie.auto_renew:bool",
-        "site.security.cookie.expire_hours:int",
-        "site.user.registration.enabled:bool",
-        "site.user.registration.force_invitation:bool",
-        "site.user.github.client_id:string",
-        "site.user.github.client_secret:string",
-        "site.comment.guest.enabled:bool",
-        "site.comment.guest.require_approval:bool",
-        "site.comment.guest.allow_reply:bool",
-        "site.home.background.url:string",
-        "site.home.background.blur:int",
-        "site.home.background.opacity:double",
-        "site.home.banner.content:string",
-        "site.home.banner.display_mode:string",
-        "site.home.sidebar.left:json",
-        "site.home.sidebar.right:json",
-        "site.home.header.icon:string",
-        "site.home.header.icon_type:string",
-        "site.home.header.title:string",
-        "site.home.header.links:json",
-        "site.home.header.show_color_mode:bool",
-        "site.home.header.show_github:bool",
-        "site.home.header.github_url:string",
-        "site.footer.beian.icp:string",
-        "site.footer.beian.police:string",
-        "site.general.info.site_created_at:datetime",
-    ];
+    public static Dictionary<string, object?>.KeyCollection Keys => DefaultValues.Keys;
 
     public static readonly Dictionary<string, object?> DefaultValues = new()
     {
