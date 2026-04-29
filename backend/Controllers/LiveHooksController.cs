@@ -30,7 +30,7 @@ public class SrsUnpublishDto
 public class LiveHooksController(BaseServices deps) : BaseApiController(deps)
 {
     [HttpPost("publish")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -45,7 +45,7 @@ public class LiveHooksController(BaseServices deps) : BaseApiController(deps)
         if (!int.TryParse(body.Stream, out var roomId) || roomId <= 0)
             return BadRequest(new { message = "Invalid room id in stream field" });
 
-        var (streamKey, payloadSecret) = ParseSrsParam(body.Param);
+        var (streamKey, _) = ParseSrsParam(body.Param);
 
         if (!await ValidateHookSecret(secret))
             return Unauthorized(new { message = "Invalid hook secret" });
@@ -72,7 +72,7 @@ public class LiveHooksController(BaseServices deps) : BaseApiController(deps)
         channel.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        return NoContent();
+        return Ok(new { code = 0, message = "ok" });
     }
 
     [HttpPost("unpublish")]
@@ -93,7 +93,7 @@ public class LiveHooksController(BaseServices deps) : BaseApiController(deps)
                 .SetProperty(x => x.UpdatedAt, DateTime.UtcNow)
             );
 
-        return NoContent();
+        return Ok(new { code = 0, message = "ok" });
     }
 
     private static (string? Key, string? Secret) ParseSrsParam(string? param)
