@@ -48,6 +48,7 @@ public static partial class SettingRegistry
         ["site.live.hook_secret:string"] = "",
         ["site.live.rtmp_server:string"] = "rtmp://localhost/live",
         ["site.live.playback_base_url:string"] = "/hls",
+        ["site.live.danmaku_enabled:bool"] = true,
     };
 
     /// <summary>

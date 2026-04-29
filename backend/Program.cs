@@ -18,6 +18,7 @@ using System.Threading.RateLimiting;
 using backend.Services.Shortcodes;
 using backend.SourceGenerators;
 using backend.Types;
+using backend.Hubs;
 using ImageProxyClient;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -28,6 +29,7 @@ builder.Services.AddControllers(options => { options.Filters.Add<CaptchaFilter>(
 builder.Services.AddOpenApi();
 builder.Services.AddHttpClient();
 builder.Services.AddMemoryCache();
+builder.Services.AddSignalR();
 
 // 添加 CORS 配置
 builder.Services.AddCors(options =>
@@ -264,6 +266,8 @@ if (rateLimiterConfig.Enabled)
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<LiveDanmakuHub>("/live/danmaku/hub");
+app.MapHub<LiveDanmakuHub>("/api/v1/live/danmaku/hub");
 
 #endregion
 
