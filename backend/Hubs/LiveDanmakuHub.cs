@@ -39,10 +39,10 @@ public class LiveDanmakuHub(AppDbContext db) : Hub
 
     public async Task SendDanmaku(int roomId, string content, string mode, string? color = null)
     {
-        if (!await SettingRegistry.Site.Live.Enabled)
+        if (!await SettingRegistry.Site.Live.General.Enabled)
             throw new HubException("Live feature is disabled.");
 
-        if (!await SettingRegistry.Site.Live.DanmakuEnabled)
+        if (!await SettingRegistry.Site.Live.Danmaku.Enabled)
             throw new HubException("Danmaku is disabled.");
 
         if (roomId <= 0) throw new HubException("Invalid room id.");

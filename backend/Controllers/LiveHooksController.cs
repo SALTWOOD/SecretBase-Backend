@@ -39,7 +39,7 @@ public class LiveHooksController(BaseServices deps) : BaseApiController(deps)
         [FromBody] SrsPublishDto body,
         string secret)
     {
-        if (!await SettingRegistry.Site.Live.Enabled)
+        if (!await SettingRegistry.Site.Live.General.Enabled)
             return StatusCode(StatusCodes.Status403Forbidden, new { message = "Live feature is disabled" });
 
         if (!int.TryParse(body.Stream, out var roomId) || roomId <= 0)
@@ -109,7 +109,7 @@ public class LiveHooksController(BaseServices deps) : BaseApiController(deps)
 
     private async Task<bool> ValidateHookSecret(string? provided)
     {
-        var expected = await SettingRegistry.Site.Live.HookSecret;
+        var expected = await SettingRegistry.Site.Live.Security.HookSecret;
         if (string.IsNullOrWhiteSpace(expected) || string.IsNullOrWhiteSpace(provided)) return false;
         return SlowEquals(expected.Trim(), provided.Trim());
     }

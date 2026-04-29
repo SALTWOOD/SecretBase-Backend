@@ -59,7 +59,7 @@ public class LiveController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<List<LiveRoomListItem>>> GetRooms([FromQuery] bool onlineOnly = true)
     {
-        if (!await SettingRegistry.Site.Live.Enabled) return StatusCode(StatusCodes.Status403Forbidden, new { message = "Live feature is disabled" });
+        if (!await SettingRegistry.Site.Live.General.Enabled) return StatusCode(StatusCodes.Status403Forbidden, new { message = "Live feature is disabled" });
 
         var query = _db.LiveChannels
             .AsNoTracking()
@@ -89,7 +89,7 @@ public class LiveController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<LiveRoomDetailsResponse>> GetRoom(int roomId)
     {
-        if (!await SettingRegistry.Site.Live.Enabled) return StatusCode(StatusCodes.Status403Forbidden, new { message = "Live feature is disabled" });
+        if (!await SettingRegistry.Site.Live.General.Enabled) return StatusCode(StatusCodes.Status403Forbidden, new { message = "Live feature is disabled" });
 
         var channel = await _db.LiveChannels
             .AsNoTracking()
@@ -127,7 +127,7 @@ public class LiveController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<MyLiveChannelResponse>> GetMyChannel()
     {
-        if (!await SettingRegistry.Site.Live.Enabled) return StatusCode(StatusCodes.Status403Forbidden, new { message = "Live feature is disabled" });
+        if (!await SettingRegistry.Site.Live.General.Enabled) return StatusCode(StatusCodes.Status403Forbidden, new { message = "Live feature is disabled" });
 
         var user = await CurrentUser;
         if (user == null) return Unauthorized(new { message = "Current user not found" });
@@ -142,7 +142,7 @@ public class LiveController(BaseServices deps) : BaseApiController(deps)
             channel.IsEnabled,
             channel.IsLive,
             channel.LastLiveAt,
-            (await SettingRegistry.Site.Live.RtmpServer) ?? "rtmp://localhost/live",
+            (await SettingRegistry.Site.Live.Stream.RtmpServer) ?? "rtmp://localhost/live",
             channel.StreamKeyHash == "" ? "Not generated" : "Generated"
         ));
     }
@@ -153,7 +153,7 @@ public class LiveController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<MyLiveChannelResponse>> UpdateMyChannel([FromBody] UpdateMyLiveChannelBody body)
     {
-        if (!await SettingRegistry.Site.Live.Enabled) return StatusCode(StatusCodes.Status403Forbidden, new { message = "Live feature is disabled" });
+        if (!await SettingRegistry.Site.Live.General.Enabled) return StatusCode(StatusCodes.Status403Forbidden, new { message = "Live feature is disabled" });
 
         var user = await CurrentUser;
         if (user == null) return Unauthorized(new { message = "Current user not found" });
@@ -174,7 +174,7 @@ public class LiveController(BaseServices deps) : BaseApiController(deps)
             channel.IsEnabled,
             channel.IsLive,
             channel.LastLiveAt,
-            (await SettingRegistry.Site.Live.RtmpServer) ?? "rtmp://localhost/live",
+            (await SettingRegistry.Site.Live.Stream.RtmpServer) ?? "rtmp://localhost/live",
             channel.StreamKeyHash == "" ? "Not generated" : "Generated"
         ));
     }
@@ -185,7 +185,7 @@ public class LiveController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> EnableMyChannel()
     {
-        if (!await SettingRegistry.Site.Live.Enabled) return StatusCode(StatusCodes.Status403Forbidden, new { message = "Live feature is disabled" });
+        if (!await SettingRegistry.Site.Live.General.Enabled) return StatusCode(StatusCodes.Status403Forbidden, new { message = "Live feature is disabled" });
 
         var user = await CurrentUser;
         if (user == null) return Unauthorized(new { message = "Current user not found" });
@@ -205,7 +205,7 @@ public class LiveController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> DisableMyChannel()
     {
-        if (!await SettingRegistry.Site.Live.Enabled) return StatusCode(StatusCodes.Status403Forbidden, new { message = "Live feature is disabled" });
+        if (!await SettingRegistry.Site.Live.General.Enabled) return StatusCode(StatusCodes.Status403Forbidden, new { message = "Live feature is disabled" });
 
         var user = await CurrentUser;
         if (user == null) return Unauthorized(new { message = "Current user not found" });
@@ -226,7 +226,7 @@ public class LiveController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<ActionResult<ResetStreamKeyResponse>> ResetStreamKey()
     {
-        if (!await SettingRegistry.Site.Live.Enabled) return StatusCode(StatusCodes.Status403Forbidden, new { message = "Live feature is disabled" });
+        if (!await SettingRegistry.Site.Live.General.Enabled) return StatusCode(StatusCodes.Status403Forbidden, new { message = "Live feature is disabled" });
 
         var user = await CurrentUser;
         if (user == null) return Unauthorized(new { message = "Current user not found" });
@@ -245,7 +245,7 @@ public class LiveController(BaseServices deps) : BaseApiController(deps)
 
     private async Task<bool> CanCurrentUserPublish(User user)
     {
-        var adminOnly = await SettingRegistry.Site.Live.AdminOnly;
+        var adminOnly = await SettingRegistry.Site.Live.Access.AdminOnly;
         if (adminOnly) return user.Role >= UserRole.Admin;
 
         return user.Role >= UserRole.User;
@@ -272,7 +272,7 @@ public class LiveController(BaseServices deps) : BaseApiController(deps)
 
     private async Task<string> BuildPlaybackUrl(int roomId)
     {
-        var baseUrl = await SettingRegistry.Site.Live.PlaybackBaseUrl;
+        var baseUrl = await SettingRegistry.Site.Live.Stream.PlaybackBaseUrl;
         var normalized = string.IsNullOrWhiteSpace(baseUrl) ? "/hls" : baseUrl.TrimEnd('/');
         return $"{normalized}/{roomId}.m3u8";
     }
