@@ -14,8 +14,6 @@ public class SrsPublishDto
     [JsonPropertyName("stream")] public required string Stream { get; set; }
 
     [JsonPropertyName("param")] public string? Param { get; set; }
-
-    [FromQuery(Name = "secret")] public string? UrlSecret { get; set; }
 }
 
 public class SrsUnpublishDto
@@ -39,8 +37,7 @@ public class LiveHooksController(BaseServices deps) : BaseApiController(deps)
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> OnPublish(
         [FromBody] SrsPublishDto body,
-        [FromHeader(Name = "X-Live-Hook-Secret")]
-        string? headerSecret)
+        string secret)
     {
         if (!await SettingRegistry.Site.Live.Enabled)
             return StatusCode(StatusCodes.Status403Forbidden, new { message = "Live feature is disabled" });
@@ -50,8 +47,7 @@ public class LiveHooksController(BaseServices deps) : BaseApiController(deps)
 
         var (streamKey, payloadSecret) = ParseSrsParam(body.Param);
 
-        var providedSecret = headerSecret ?? body.UrlSecret ?? payloadSecret;
-        if (!await ValidateHookSecret(providedSecret))
+        if (!await ValidateHookSecret(secret))
             return Unauthorized(new { message = "Invalid hook secret" });
 
         if (string.IsNullOrWhiteSpace(streamKey))
@@ -82,13 +78,12 @@ public class LiveHooksController(BaseServices deps) : BaseApiController(deps)
     [HttpPost("unpublish")]
     public async Task<IActionResult> OnUnpublish(
         [FromBody] SrsUnpublishDto body,
-        [FromHeader(Name = "X-Live-Hook-Secret")]
-        string? headerSecret)
+        string secret)
     {
         if (!int.TryParse(body.Stream, out var roomId))
             return BadRequest(new { message = "Invalid room id" });
 
-        if (!await ValidateHookSecret(headerSecret ?? body.UrlSecret))
+        if (!await ValidateHookSecret(secret))
             return Unauthorized(new { message = "Invalid hook secret" });
 
         await _db.LiveChannels
