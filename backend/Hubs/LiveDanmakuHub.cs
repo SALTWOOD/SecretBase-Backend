@@ -13,6 +13,7 @@ public sealed record LiveDanmakuMessage(
     string Username,
     string Content,
     string Mode,
+    string Color,
     DateTime CreatedAt
 );
 
@@ -36,7 +37,7 @@ public class LiveDanmakuHub(AppDbContext db) : Hub
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, BuildRoomGroup(roomId));
     }
 
-    public async Task SendDanmaku(int roomId, string content, string mode)
+    public async Task SendDanmaku(int roomId, string content, string mode, string? color = null)
     {
         if (!await SettingRegistry.Site.Live.Enabled)
             throw new HubException("Live feature is disabled.");
@@ -56,6 +57,10 @@ public class LiveDanmakuHub(AppDbContext db) : Hub
         var normalizedMode = mode?.Trim().ToLowerInvariant() ?? "";
         if (!AllowedModes.Contains(normalizedMode))
             throw new HubException("Invalid danmaku mode.");
+
+        var normalizedColor = NormalizeColor(color);
+        if (normalizedColor == null)
+            throw new HubException("Invalid danmaku color.");
 
         var channel = await db.LiveChannels
             .AsNoTracking()
@@ -98,6 +103,7 @@ public class LiveDanmakuHub(AppDbContext db) : Hub
             username,
             normalizedContent,
             normalizedMode,
+            normalizedColor,
             now
         );
 
@@ -105,4 +111,23 @@ public class LiveDanmakuHub(AppDbContext db) : Hub
     }
 
     private static string BuildRoomGroup(int roomId) => $"live-room:{roomId}";
+
+    private static string? NormalizeColor(string? color)
+    {
+        if (string.IsNullOrWhiteSpace(color)) return "#ffffff";
+
+        var raw = color.Trim();
+        if (raw.Length != 7 || raw[0] != '#') return null;
+
+        for (var i = 1; i < raw.Length; i++)
+        {
+            var c = raw[i];
+            var isHex = (c >= '0' && c <= '9') ||
+                        (c >= 'a' && c <= 'f') ||
+                        (c >= 'A' && c <= 'F');
+            if (!isHex) return null;
+        }
+
+        return raw.ToLowerInvariant();
+    }
 }
