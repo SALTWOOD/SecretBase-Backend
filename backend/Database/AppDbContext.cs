@@ -20,6 +20,7 @@ public class AppDbContext : DbContext
     public DbSet<StickerSet> StickerSets => Set<StickerSet>();
     public DbSet<Sticker> Stickers => Set<Sticker>();
     public DbSet<ThirdPartyBinding> ThirdPartyBindings => Set<ThirdPartyBinding>();
+    public DbSet<LiveChannel> LiveChannels => Set<LiveChannel>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

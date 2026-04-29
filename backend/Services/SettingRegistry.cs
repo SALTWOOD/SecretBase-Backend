@@ -43,6 +43,11 @@ public static partial class SettingRegistry
         ["site.footer.beian.icp:string"] = "",
         ["site.footer.beian.police:string"] = "",
         ["site.general.info.site_created_at:datetime"] = new DateTime(),
+        ["site.live.enabled:bool"] = false,
+        ["site.live.admin_only:bool"] = true,
+        ["site.live.hook_secret:string"] = "",
+        ["site.live.rtmp_server:string"] = "rtmp://localhost/live",
+        ["site.live.playback_base_url:string"] = "/hls",
     };
 
     /// <summary>
