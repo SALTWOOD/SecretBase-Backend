@@ -104,8 +104,12 @@ public class LiveHooksController(BaseServices deps) : BaseApiController(deps)
     private static (string? Key, string? Secret) ParseSrsParam(string? param)
     {
         if (string.IsNullOrWhiteSpace(param)) return (null, null);
-        var query = QueryHelpers.ParseQuery(param.TrimStart('?'));
-        return (query["key"].FirstOrDefault(), query["secret"].FirstOrDefault());
+        var query = QueryHelpers.ParseQuery(param.Trim());
+
+        query.TryGetValue("key", out var key);
+        query.TryGetValue("secret", out var secret);
+
+        return (key.FirstOrDefault(), secret.FirstOrDefault());
     }
 
     private async Task<bool> ValidateHookSecret(string? provided)
