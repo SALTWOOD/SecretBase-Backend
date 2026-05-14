@@ -24,15 +24,18 @@ public static class Utils
     public static async Task<Invite?> GetInvite(AppDbContext db, string? code, bool doIncrement = true)
     {
         if (string.IsNullOrEmpty(code)) return null;
-        var invite = await db.Invites
-            .FirstOrDefaultAsync(it => it.Code == code);
 
-        if (doIncrement && invite != null && invite.IsValid)
-        {
-            invite.UsedCount++;
-            await db.SaveChangesAsync();
-        }
+        if (!doIncrement)
+            return await db.Invites.FirstOrDefaultAsync(it => it.Code == code);
 
-        return invite;
+        // Atomic increment: only increments if within MaxUses limit
+        var rowsAffected = await db.Invites
+            .Where(it => it.Code == code && !it.IsDisabled && it.UsedCount < it.MaxUses)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(
+                it => it.UsedCount, it => it.UsedCount + 1));
+
+        if (rowsAffected == 0) return null;
+
+        return await db.Invites.FirstOrDefaultAsync(it => it.Code == code);
     }
 }
