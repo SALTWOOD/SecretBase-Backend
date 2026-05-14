@@ -10,7 +10,7 @@ public static partial class SettingRegistry
     public static readonly Dictionary<string, object?> DefaultValues = new()
     {
         // Setting keys must have at least 4 segments:
-        // 1) site, 2) live  => decide settings tab
+        // 1) site, 2) section => decide settings tab
         // 3) category        => decide subgroup card in the tab
         // 4+) field path      => actual setting item name
         ["site.seo.general.title:string"] = "默认站点",
@@ -47,12 +47,6 @@ public static partial class SettingRegistry
         ["site.footer.beian.icp:string"] = "",
         ["site.footer.beian.police:string"] = "",
         ["site.general.info.site_created_at:datetime"] = new DateTime(),
-        ["site.live.general.enabled:bool"] = false,
-        ["site.live.access.admin_only:bool"] = true,
-        ["site.live.security.hook_secret:string"] = "",
-        ["site.live.stream.rtmp_server:string"] = "rtmp://localhost/live",
-        ["site.live.stream.playback_base_url:string"] = "/hls",
-        ["site.live.danmaku.enabled:bool"] = true,
     };
 
     /// <summary>

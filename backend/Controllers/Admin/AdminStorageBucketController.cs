@@ -248,7 +248,7 @@ public class AdminStorageBucketController : BaseApiController
     [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public IActionResult GeneratePresignedUploadUrl([FromBody] PresignUploadRequest request)
+    public async Task<IActionResult> GeneratePresignedUploadUrl([FromBody] PresignUploadRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Key))
             return BadRequest(new MessageResponse { Message = "Key is required" });
@@ -292,7 +292,7 @@ public class AdminStorageBucketController : BaseApiController
     [ProducesResponseType<MessageResponse>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public IActionResult GeneratePresignedDownloadUrl(
+    public async Task<IActionResult> GeneratePresignedDownloadUrl(
         [FromQuery] string key,
         [FromQuery] bool download = false,
         [FromQuery] int expirationMinutes = 15
