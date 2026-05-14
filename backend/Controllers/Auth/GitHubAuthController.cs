@@ -13,7 +13,7 @@ using static backend.Services.SessionService;
 namespace backend.Controllers.Auth;
 
 [Route("auth/github")]
-public class GitHubAuthController(BaseServices deps) : BaseApiController(deps)
+public class GitHubAuthController(BaseServices deps, IHttpClientFactory httpClientFactory) : BaseApiController(deps)
 {
     private const string Provider = "GitHub";
     private const string StatePrefix = "github_oauth:state:";
@@ -180,8 +180,9 @@ public class GitHubAuthController(BaseServices deps) : BaseApiController(deps)
 
     private async Task<string?> ExchangeCodeForTokenAsync(string clientId, string clientSecret, string code)
     {
-        using var httpClient = new HttpClient();
-        httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        var httpClient = httpClientFactory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "https://github.com/login/oauth/access_token");
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
         var body = new
         {
@@ -190,7 +191,8 @@ public class GitHubAuthController(BaseServices deps) : BaseApiController(deps)
             code
         };
 
-        var response = await httpClient.PostAsJsonAsync("https://github.com/login/oauth/access_token", body);
+        request.Content = JsonContent.Create(body);
+        var response = await httpClient.SendAsync(request);
         if (!response.IsSuccessStatusCode) return null;
 
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -199,11 +201,13 @@ public class GitHubAuthController(BaseServices deps) : BaseApiController(deps)
 
     private async Task<JsonElement?> GetGitHubUserAsync(string accessToken)
     {
-        using var httpClient = new HttpClient();
-        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("SecretBase");
+        var httpClient = httpClientFactory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/user");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        request.Headers.UserAgent.ParseAdd("SecretBase");
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-        var response = await httpClient.GetAsync("https://api.github.com/user");
+        var response = await httpClient.SendAsync(request);
         if (!response.IsSuccessStatusCode) return null;
 
         return await response.Content.ReadFromJsonAsync<JsonElement>();
