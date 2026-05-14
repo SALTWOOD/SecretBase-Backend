@@ -46,7 +46,7 @@ public class WebAuthnController : BaseApiController
         var options = _service.GetRegistrationOptions(user.Id, user.Username);
 
         var cacheKey = $"{REG_PREFIX}:{Base64UrlTextEncoder.Encode(options.Challenge)}";
-        _redis.StringSet(cacheKey, options.ToJson(), TimeSpan.FromMinutes(5));
+        await _redis.StringSetAsync(cacheKey, options.ToJson(), TimeSpan.FromMinutes(5));
 
         return Ok(options);
     }
