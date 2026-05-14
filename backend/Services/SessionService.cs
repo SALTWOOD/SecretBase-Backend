@@ -112,11 +112,23 @@ public class SessionService
             PermissionLevel = TokenPermissionLevel.Full
         };
 
-        // Get current remaining time to live
-        var ttl = await _redis.KeyTimeToLiveAsync(key);
-        if (ttl.HasValue) await _redis.StringSetAsync(key, JsonSerializer.Serialize(upgradedSession), ttl.Value);
-
-        return true;
+        // Atomic compare-and-swap: only upgrade if the data hasn't changed
+        var originalJson = data.ToString();
+        var upgradedJson = JsonSerializer.Serialize(upgradedSession);
+        var script = @"
+local current = redis.call('GET', KEYS[1])
+if current == ARGV[1] then
+    local ttl = redis.call('TTL', KEYS[1])
+    if ttl > 0 then
+        redis.call('SET', KEYS[1], ARGV[2], 'EX', ttl)
+        return 1
+    end
+end
+return 0";
+        var result = (long)await _redis.ScriptEvaluateAsync(script,
+            [key],
+            [originalJson, upgradedJson]);
+        return result == 1;
     }
 
     /// <summary>
