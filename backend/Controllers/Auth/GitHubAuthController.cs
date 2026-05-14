@@ -166,11 +166,15 @@ public class GitHubAuthController(BaseServices deps, IHttpClientFactory httpClie
     private async Task<OAuthState?> GetAndDeleteStateAsync(string state)
     {
         var key = $"{StatePrefix}{state}";
-        var data = await _redis.StringGetAsync(key);
-        if (data.IsNullOrEmpty) return null;
-
-        await _redis.KeyDeleteAsync(key);
-        return JsonSerializer.Deserialize<OAuthState>(data.ToString());
+        var script = @"
+local data = redis.call('GET', KEYS[1])
+if data then
+    redis.call('DEL', KEYS[1])
+end
+return data";
+        var result = (string?)await _redis.ScriptEvaluateAsync(script, [key]);
+        if (result == null) return null;
+        return JsonSerializer.Deserialize<OAuthState>(result);
     }
 
     private static string BuildGitHubAuthorizeUrl(string clientId, string state)
