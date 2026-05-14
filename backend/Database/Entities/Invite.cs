@@ -1,4 +1,6 @@
-﻿namespace backend.Database.Entities;
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace backend.Database.Entities;
 
 public class Invite
 {
@@ -21,6 +23,8 @@ public class Invite
     public User? Creator { get; set; }
 
     public List<User>? UsedBy { get; set; }
+
+    [Timestamp] public byte[]? RowVersion { get; set; }
 
     // Logic Property
     public bool IsValid => !IsDisabled &&

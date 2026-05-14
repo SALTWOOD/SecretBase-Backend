@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace backend.Database.Entities;
 
@@ -34,6 +35,8 @@ public class User
     [JsonIgnore] public bool ForceTwoFactor { get; set; }
 
     [JsonIgnore] public List<Invite> MyIssuedInvites { get; set; } = new();
+
+    [Timestamp] public byte[]? RowVersion { get; set; }
 }
 
 public class LastLogin
