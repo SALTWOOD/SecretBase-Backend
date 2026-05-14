@@ -194,7 +194,7 @@ public class AdminStickerSetController : BaseApiController
                     ContentType = item.ContentType
                 };
 
-                presignedUrl = _s3Client.GetPreSignedURL(presignedRequest);
+                presignedUrl = await _s3Client.GetPreSignedURLAsync(presignedRequest);
             }
             catch (AmazonS3Exception ex)
             {
@@ -268,7 +268,7 @@ public class AdminStickerSetController : BaseApiController
                     ContentType = request.ContentType
                 };
 
-                presignedUrl = _s3Client.GetPreSignedURL(presignedRequest);
+                presignedUrl = await _s3Client.GetPreSignedURLAsync(presignedRequest);
                 expiresAt = DateTime.UtcNow.AddMinutes(15);
             }
             catch (AmazonS3Exception ex)

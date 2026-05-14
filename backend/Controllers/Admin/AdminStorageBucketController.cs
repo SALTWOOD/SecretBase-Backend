@@ -264,7 +264,7 @@ public class AdminStorageBucketController : BaseApiController
                 ContentType = request.ContentType
             };
 
-            var url = _s3Client.GetPreSignedURL(presignedRequest);
+            var url = await _s3Client.GetPreSignedURLAsync(presignedRequest);
 
             return Ok(new PresignedUrlResponse
             {
@@ -317,7 +317,7 @@ public class AdminStorageBucketController : BaseApiController
                     $"attachment; filename*=UTF-8''{Uri.EscapeDataString(fileName)}";
             }
 
-            var url = _s3Client.GetPreSignedURL(request);
+            var url = await _s3Client.GetPreSignedURLAsync(request);
 
             return Ok(new PresignedUrlResponse
             {
