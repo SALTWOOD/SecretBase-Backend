@@ -110,6 +110,15 @@ public class LiveDanmakuHub(AppDbContext db) : Hub
         await Clients.Group(BuildRoomGroup(roomId)).SendAsync("danmaku", message);
     }
 
+    public override Task OnDisconnectedAsync(Exception? exception)
+    {
+        var userIdRaw = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (int.TryParse(userIdRaw, out var userId))
+            UserLastSentAt.TryRemove(userId, out _);
+
+        return base.OnDisconnectedAsync(exception);
+    }
+
     private static string BuildRoomGroup(int roomId) => $"live-room:{roomId}";
 
     private static string? NormalizeColor(string? color)
