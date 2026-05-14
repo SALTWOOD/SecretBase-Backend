@@ -8,13 +8,13 @@ namespace backend.Services;
 
 public static class Permissions
 {
-    public static string All = "*";
-    public static string User = "user:*";
-    public static string UserRead = "user:read";
-    public static string UserWrite = "user:write";
-    public static string Admin = "admin:*";
-    public static string AdminRead = "admin:read";
-    public static string AdminWrite = "admin:write";
+    public const string All = "*";
+    public const string User = "user:*";
+    public const string UserRead = "user:read";
+    public const string UserWrite = "user:write";
+    public const string Admin = "admin:*";
+    public const string AdminRead = "admin:read";
+    public const string AdminWrite = "admin:write";
 }
 
 /// <summary>
