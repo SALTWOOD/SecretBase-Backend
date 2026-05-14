@@ -24,10 +24,25 @@ public class EfSettingProvider(IServiceScopeFactory scopeFactory) : ISettingProv
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var entity = await db.Set<Setting>().FirstOrDefaultAsync(x => x.Key == key);
-        if (entity != null)
+        // Create a temporary Setting to compute the serialized value and type
+        var temp = new Setting();
+        temp.SetValue(value);
+        var serializedValue = temp.Value;
+        var settingType = temp.Type;
+
+        // Try atomic update first
+        var rowsAffected = await db.Set<Setting>()
+            .Where(x => x.Key == key)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.Value, serializedValue)
+                .SetProperty(x => x.Type, settingType));
+
+        // If no existing row, insert new
+        if (rowsAffected == 0)
         {
-            entity.SetValue(value);
+            var newSetting = new Setting { Key = key };
+            newSetting.SetValue(value);
+            db.Set<Setting>().Add(newSetting);
             await db.SaveChangesAsync();
         }
     }
