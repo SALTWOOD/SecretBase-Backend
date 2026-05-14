@@ -43,7 +43,7 @@ public class WebAuthnController : BaseApiController
     {
         var user = await CurrentUser;
         if (user == null) return Unauthorized();
-        var options = _service.GetRegistrationOptions(user.Id, user.Username);
+        var options = await _service.GetRegistrationOptionsAsync(user.Id, user.Username);
 
         var cacheKey = $"{REG_PREFIX}:{Base64UrlTextEncoder.Encode(options.Challenge)}";
         await _redis.StringSetAsync(cacheKey, options.ToJson(), TimeSpan.FromMinutes(5));

@@ -17,7 +17,7 @@ public class WebAuthnService
         _db = db;
     }
 
-    public CredentialCreateOptions GetRegistrationOptions(int userId, string username)
+    public async Task<CredentialCreateOptions> GetRegistrationOptionsAsync(int userId, string username)
     {
         var user = new Fido2User
         {
@@ -26,12 +26,11 @@ public class WebAuthnService
             Id = BitConverter.GetBytes(userId)
         };
 
-        var existingKeys = _db.UserCredentials
+        var existingKeys = await _db.UserCredentials
             .AsNoTracking()
             .Where(c => c.UserId == userId)
-            .ToList()
             .Select(c => new PublicKeyCredentialDescriptor(c.CredentialId))
-            .ToList();
+            .ToListAsync();
 
         var authenticatorSelection = new AuthenticatorSelection
         {
