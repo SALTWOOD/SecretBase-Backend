@@ -3,6 +3,7 @@ using backend.Database.Entities;
 using Jint;
 using Jint.Native;
 using Jint.Runtime;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
@@ -12,7 +13,7 @@ namespace backend.Services.Shortcodes;
 
 public class ShortcodeSandbox
 {
-    private readonly AppDbContext _db;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IDatabase _redis;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IWebHostEnvironment _env;
@@ -20,13 +21,13 @@ public class ShortcodeSandbox
     private readonly TimeSpan _executionTimeout = TimeSpan.FromSeconds(30);
 
     public ShortcodeSandbox(
-        AppDbContext db,
+        IServiceScopeFactory scopeFactory,
         IConnectionMultiplexer redis,
         IHttpClientFactory httpClientFactory,
         IWebHostEnvironment env,
         ILogger<ShortcodeSandbox> logger)
     {
-        _db = db;
+        _scopeFactory = scopeFactory;
         _redis = redis.GetDatabase();
         _httpClientFactory = httpClientFactory;
         _env = env;
@@ -109,9 +110,11 @@ public class ShortcodeSandbox
 
     private object CreateSafeContext(string shortcodeName, User? currentUser)
     {
+        var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         return new
         {
-            db = new SafeDbAccess(_db, shortcodeName, _logger),
+            db = new SafeDbAccess(db, shortcodeName, _logger),
             redis = new SafeRedisAccess(_redis, shortcodeName),
             http = new SafeHttpAccess(_httpClientFactory, shortcodeName, _logger),
             currentUser = currentUser != null
