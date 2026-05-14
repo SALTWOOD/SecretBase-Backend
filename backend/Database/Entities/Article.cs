@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
 namespace backend.Database.Entities;
@@ -30,5 +29,4 @@ public class Article
 
     [MaxLength(200)] public string? Slug { get; set; }
 
-    [Timestamp] public byte[]? RowVersion { get; set; }
 }

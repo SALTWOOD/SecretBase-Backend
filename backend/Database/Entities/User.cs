@@ -36,7 +36,6 @@ public class User
 
     [JsonIgnore] public List<Invite> MyIssuedInvites { get; set; } = new();
 
-    [Timestamp] public byte[]? RowVersion { get; set; }
 }
 
 public class LastLogin

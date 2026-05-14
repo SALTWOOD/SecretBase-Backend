@@ -24,8 +24,6 @@ public class Invite
 
     public List<User>? UsedBy { get; set; }
 
-    [Timestamp] public byte[]? RowVersion { get; set; }
-
     // Logic Property
     public bool IsValid => !IsDisabled &&
                            UsedCount < MaxUses &&
