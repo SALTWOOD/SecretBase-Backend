@@ -77,14 +77,18 @@ public class LiveDanmakuHub(AppDbContext db) : Hub
             throw new HubException("Unauthorized.");
 
         var now = DateTime.UtcNow;
+        var rateLimit = TimeSpan.FromMilliseconds(800);
+
         if (UserLastSentAt.TryGetValue(userId, out var lastSentAt))
         {
             var elapsed = now - lastSentAt;
-            if (elapsed < TimeSpan.FromMilliseconds(800))
+            if (elapsed < rateLimit)
                 throw new HubException("Sending too fast.");
         }
 
-        UserLastSentAt[userId] = now;
+        // Atomic compare-and-swap: only update if no concurrent send beat us
+        UserLastSentAt.AddOrUpdate(userId, now, (_, existing) =>
+            (now - existing) >= rateLimit ? now : existing);
 
         var username = Context.User?.FindFirstValue(ClaimTypes.Name);
         if (string.IsNullOrWhiteSpace(username))
