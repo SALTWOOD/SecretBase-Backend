@@ -4,6 +4,7 @@ using backend.Filters;
 using backend.Services;
 using backend.Types.Request;
 using backend.Types.Response;
+using backend.Types.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -87,7 +88,7 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
 
     [HttpPost("register")]
     [ValidateCaptcha]
-    [ProducesResponseType(typeof(User), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(MessageResponse), StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Register([FromBody] AuthRegisterModel model)
@@ -133,7 +134,7 @@ public class AuthController(BaseServices deps) : BaseApiController(deps)
 
         await UpdateLastLoginAsync(newUser, HttpContext);
         await RefreshTokenAsync(newUser);
-        return Ok(newUser);
+        return Ok(UserDto.FromUserWithEmail(newUser));
     }
 
     [HttpPost("renew")]
