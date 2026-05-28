@@ -2,6 +2,7 @@
 using backend.Database.Entities;
 using backend.Services;
 using backend.Types.Response;
+using backend.Types.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -19,8 +20,8 @@ public readonly record struct UpdateUserStatusBody(
 public class UserAdminController(BaseServices deps) : BaseApiController(deps)
 {
     [HttpGet]
-    [ProducesResponseType(typeof(List<User>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<List<User>>> GetUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+    [ProducesResponseType(typeof(List<UserDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<UserDto>>> GetUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
@@ -35,7 +36,7 @@ public class UserAdminController(BaseServices deps) : BaseApiController(deps)
 
         Response.Headers.Append("X-Total-Count", totalCount.ToString());
 
-        return Ok(users);
+        return Ok(users.Select(UserDto.FromUserWithEmail).ToList());
     }
 
     [HttpPut("{id:int}/status")]

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Security.Cryptography;
+using backend.Types.Responses;
 
 namespace backend.Controllers.Admin;
 
@@ -179,7 +180,7 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
     }
 
     [HttpGet("{id:int}/users")]
-    [ProducesResponseType<List<User>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<List<UserDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetInvitationUsers(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
     {
         var exists = await _db.Invites.AnyAsync(it => it.Id == id);
@@ -196,6 +197,6 @@ public class InvitationAdminController(BaseServices deps) : BaseApiController(de
         totalCount = users.Count;
 
         Response.Headers.Append("X-Total-Count", totalCount.ToString());
-        return Ok(users);
+        return Ok(users.Select(UserDto.FromUserWithEmail).ToList());
     }
 }
