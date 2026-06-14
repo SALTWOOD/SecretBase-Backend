@@ -34,9 +34,6 @@ public class ThirdPartyBindingConfiguration : IEntityTypeConfiguration<ThirdPart
         builder.Property(x => x.ProviderAvatarUrl)
             .HasMaxLength(500);
 
-        builder.Property(x => x.AccessToken)
-            .HasMaxLength(500);
-
         builder.Property(x => x.CreatedAt)
             .HasColumnType("timestamptz")
             .HasDefaultValueSql("CURRENT_TIMESTAMP");

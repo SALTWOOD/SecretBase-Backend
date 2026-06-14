@@ -82,16 +82,16 @@ public class GitHubAuthController(BaseServices deps, IHttpClientFactory httpClie
             case "bind":
                 if (oauthState.UserId == null)
                     return Redirect("/auth/login?state=github_invalid_action");
-                return await HandleBind(oauthState.UserId.Value, githubId, githubLogin, githubAvatar, token);
+                return await HandleBind(oauthState.UserId.Value, githubId, githubLogin, githubAvatar);
             case "login":
-                return await HandleLogin(githubId, githubLogin, githubAvatar, token);
+                return await HandleLogin(githubId, githubLogin, githubAvatar);
             default:
                 return Redirect("/auth/login?state=github_invalid_action");
         }
     }
 
     private async Task<IActionResult> HandleBind(int userId, string githubId, string githubLogin,
-        string? githubAvatar, string accessToken)
+        string? githubAvatar)
     {
         var existingBinding = await _db.ThirdPartyBindings
             .FirstOrDefaultAsync(b => b.Provider == Provider && b.ProviderUserId == githubId);
@@ -110,8 +110,7 @@ public class GitHubAuthController(BaseServices deps, IHttpClientFactory httpClie
             Provider = Provider,
             ProviderUserId = githubId,
             ProviderUsername = githubLogin,
-            ProviderAvatarUrl = githubAvatar,
-            AccessToken = accessToken
+            ProviderAvatarUrl = githubAvatar
         };
 
         _db.ThirdPartyBindings.Add(binding);
@@ -121,7 +120,7 @@ public class GitHubAuthController(BaseServices deps, IHttpClientFactory httpClie
     }
 
     private async Task<IActionResult> HandleLogin(string githubId, string githubLogin,
-        string? githubAvatar, string accessToken)
+        string? githubAvatar)
     {
         var binding = await _db.ThirdPartyBindings
             .Include(b => b.User)
@@ -136,7 +135,6 @@ public class GitHubAuthController(BaseServices deps, IHttpClientFactory httpClie
 
         binding.ProviderUsername = githubLogin;
         binding.ProviderAvatarUrl = githubAvatar;
-        binding.AccessToken = accessToken;
         await _db.SaveChangesAsync();
 
         await UpdateLastLoginAsync(user, HttpContext);
