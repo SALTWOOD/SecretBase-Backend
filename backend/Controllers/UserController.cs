@@ -13,7 +13,6 @@ namespace backend.Controllers;
 public class UserController(BaseServices deps) : BaseApiController(deps)
 {
     [Authorize]
-    [ScopeRequired(OAuthScopes.Profile)]
     [HttpGet("profile")]
     [ProducesResponseType(typeof(User), StatusCodes.Status200OK)]
     public async Task<IActionResult> Profile()

@@ -26,8 +26,6 @@ public class AppDbContext : DbContext
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
-        modelBuilder.UseOpenIddict();
-
         modelBuilder.Entity<User>(entity =>
         {
             entity.OwnsOne(u => u.LastLoginInfo, builder => { builder.ToJson(); });

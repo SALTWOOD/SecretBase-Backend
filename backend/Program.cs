@@ -11,7 +11,6 @@ using backend.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
-using OpenIddict.Abstractions;
 using StackExchange.Redis;
 using System;
 using System.Threading.RateLimiting;
@@ -54,9 +53,6 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 {
     // Configure PostgreSQL
     options.UseNpgsql(connectionString);
-
-    // Register OpenIddict entities
-    options.UseOpenIddict();
 });
 
 #endregion
@@ -128,27 +124,21 @@ builder.Services.AddFido2(options =>
 
 builder.Services.AddSingleton<IAuthorizationHandler, MinimumRoleHandler>();
 
-// 配置双认证方案：Cookie Session + OAuth Bearer
+// 配置 Cookie Session 认证
 builder.Services.AddAuthentication("SimpleSession")
-    .AddScheme<AuthenticationSchemeOptions, CookieAuthenticator>("SimpleSession", null)
-    .AddScheme<AuthenticationSchemeOptions, OAuthBearerAuthenticator>(OAuthBearerAuthenticator.SchemeName, null);
+    .AddScheme<AuthenticationSchemeOptions, CookieAuthenticator>("SimpleSession", null);
 
 builder.Services.AddAuthorization(options =>
 {
-    // 默认策略：支持任一认证方式
+    // 默认策略：Cookie Session 认证
     options.DefaultPolicy = new AuthorizationPolicyBuilder()
-        .AddAuthenticationSchemes("SimpleSession", OAuthBearerAuthenticator.SchemeName)
+        .AddAuthenticationSchemes("SimpleSession")
         .RequireAuthenticatedUser()
         .Build();
 
     // CookieOnly 策略：仅限 Cookie Session 认证（用于敏感操作）
     options.AddPolicy("CookieOnly", policy =>
         policy.AddAuthenticationSchemes("SimpleSession")
-            .RequireAuthenticatedUser());
-
-    // OAuthOnly 策略：仅限 OAuth Bearer 认证
-    options.AddPolicy("OAuthOnly", policy =>
-        policy.AddAuthenticationSchemes(OAuthBearerAuthenticator.SchemeName)
             .RequireAuthenticatedUser());
 
     // AdminOnly 策略：需要 Admin 角色（仅 Cookie Session）
@@ -182,67 +172,6 @@ if (rateLimiterConfig.Enabled)
         });
     });
 }
-
-#endregion
-
-#region OAuth (OpenIddict with EF Core)
-
-builder.Services.AddOpenIddict()
-    .AddCore(options =>
-    {
-        options.UseEntityFrameworkCore()
-            .UseDbContext<AppDbContext>();
-    })
-    .AddServer(options =>
-    {
-        options.SetAuthorizationEndpointUris("/connect/authorize")
-            .SetTokenEndpointUris("/connect/token")
-            .SetIntrospectionEndpointUris("/connect/introspect")
-            .SetRevocationEndpointUris("/connect/revoke");
-
-        // Enable authorization code flow with PKCE support
-        options.AllowAuthorizationCodeFlow();
-
-        // Enable refresh token flow
-        options.AllowRefreshTokenFlow();
-        options.DisableAccessTokenEncryption();
-
-        // Configure token lifetimes
-        options.SetAuthorizationCodeLifetime(TimeSpan.FromMinutes(5))
-            .SetAccessTokenLifetime(TimeSpan.FromMinutes(60))
-            .SetRefreshTokenLifetime(TimeSpan.FromDays(30));
-
-        // Register standard scopes
-        options.RegisterScopes(
-            OpenIddictConstants.Permissions.Scopes.Email,
-            OpenIddictConstants.Permissions.Scopes.Profile,
-            OpenIddictConstants.Permissions.Prefixes.Scope + "offline_access"
-        );
-
-        // Register custom scopes
-        options.RegisterScopes(
-            "roles",
-            "apps",
-            "consents",
-            "tokens",
-            "settings:read",
-            "settings:write",
-            "invites:read",
-            "invites:write"
-        );
-
-        // Add development certificates (use production certificates in production!)
-        options.AddDevelopmentEncryptionCertificate()
-            .AddDevelopmentSigningCertificate()
-            .SetIssuer(builder.Configuration["OpenIddict:Issuer"].ThrowIfNull());
-
-        // Configure ASP.NET Core integration
-        options.UseAspNetCore()
-            .DisableTransportSecurityRequirement()
-            .EnableTokenEndpointPassthrough()
-            .EnableAuthorizationEndpointPassthrough()
-            .EnableStatusCodePagesIntegration();
-    });
 
 #endregion
 
