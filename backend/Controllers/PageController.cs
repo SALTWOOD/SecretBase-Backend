@@ -69,6 +69,11 @@ public class PageController(BaseServices deps) : BaseApiController(deps)
 
         if (page == null) return NotFound(new MessageResponse("Page not found."));
 
+        var currentUser = await CurrentUser;
+        var isAdmin = currentUser != null && currentUser.Role >= UserRole.Admin;
+        if (!page.IsPublished && page.AuthorId != CurrentUserId && !isAdmin)
+            return NotFound(new MessageResponse("Page not found."));
+
         return Ok(ArticleMappingHelper.ToDetailResponse(page));
     }
 

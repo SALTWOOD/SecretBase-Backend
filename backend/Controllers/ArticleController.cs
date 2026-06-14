@@ -54,6 +54,11 @@ public class ArticleController(BaseServices deps, IImgproxyClient imgproxyClient
 
         if (article == null) return NotFound(new MessageResponse("Article not found."));
 
+        var currentUser = await CurrentUser;
+        var isAdmin = currentUser != null && currentUser.Role >= UserRole.Admin;
+        if (!article.IsPublished && article.AuthorId != CurrentUserId && !isAdmin)
+            return NotFound(new MessageResponse("Article not found."));
+
         return Ok(ArticleMappingHelper.ToDetailResponse(article));
     }
 
@@ -69,6 +74,11 @@ public class ArticleController(BaseServices deps, IImgproxyClient imgproxyClient
             .FirstOrDefaultAsync();
 
         if (article == null) return NotFound(new MessageResponse("Article not found."));
+
+        var currentUser = await CurrentUser;
+        var isAdmin = currentUser != null && currentUser.Role >= UserRole.Admin;
+        if (!article.IsPublished && article.AuthorId != CurrentUserId && !isAdmin)
+            return NotFound(new MessageResponse("Article not found."));
 
         return Ok(ArticleMappingHelper.ToDetailResponse(article));
     }
